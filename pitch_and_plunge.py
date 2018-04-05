@@ -21,29 +21,63 @@ ts = np.array(ts)
 hs = np.array(hs)
 alphas = np.array(alphas)
 
+plt.figure()
+plt.plot(ts, alphas, ts, hs)
+
 # Decompose plunge signal using matrix pencil method
-after_forcing_period = ts > 20.0
+print "For plunge:"
+after_forcing_period = ts > 0.0
 ts = ts[after_forcing_period]
 hs = hs[after_forcing_period]
-alphas = alphas[after_forcing_period]
 n = len(ts)
 print "n = ", n
-N = 200
+N = 150
 print "N = ", N
-T = np.linspace(0.0, ts[-1], N)
+T = np.linspace(ts[0], ts[-1], N)
 X = np.interp(T, ts, hs)
 DT = T[1] - T[0]
-
-# Plot plunge response
-plt.figure(figsize=(8, 6))
-plt.plot(T, X)
-plt.xlabel(r'$t$', fontsize=16)
-plt.ylabel(r'$h$', fontsize=16)
-plt.title(r'Plot of plunge response of system')
-plt.show()
 
 R, S = pencil(N, X, DT)
 print S
 print R
 
 print S[np.argmax(np.abs(R.real))]
+
+# Plot plunge response
+t_recon = np.linspace(ts[0], ts[-1], 1000)
+x_recon = reconstruct_signal(t_recon, R, S)
+plt.figure(figsize=(8, 6))
+plt.plot(T, X, label='original')
+plt.plot(t_recon, x_recon, 'b--', label='reconstructed')
+plt.xlabel(r'$t$', fontsize=16)
+plt.ylabel(r'$x$', fontsize=16)
+plt.legend()
+
+# Decompose pitch signal using matrix pencil method
+print "For pitch:"
+alphas = alphas[after_forcing_period]
+n = len(ts)
+print "n = ", n
+N = 150
+print "N = ", N
+T = np.linspace(ts[0], ts[-1], N)
+X = np.interp(T, ts, alphas)
+DT = T[1] - T[0]
+
+R, S = pencil(N, X, DT)
+print S
+print R
+
+print S[np.argmax(np.abs(R.real))]
+
+# Plot plunge response
+t_recon = np.linspace(ts[0], ts[-1], 1000)
+x_recon = reconstruct_signal(t_recon, R, S)
+plt.figure(figsize=(8, 6))
+plt.plot(T, X, label='original')
+plt.plot(t_recon, x_recon, 'b--', label='reconstructed')
+plt.xlabel(r'$t$', fontsize=16)
+plt.ylabel(r'$x$', fontsize=16)
+plt.legend()
+
+plt.show()

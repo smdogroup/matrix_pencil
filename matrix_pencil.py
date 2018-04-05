@@ -58,7 +58,9 @@ def pencil(N, X, DT):
     V2t = Vt[:,1:]
     Y1 = U.dot(Sigma).dot(V1t)
     Y2 = U.dot(Sigma).dot(V2t)
-    A = V1t.T.dot(V2t)
+    Y1inv = la.pinv(Y1)
+    #A = V1t.T.dot(V2t)
+    A = Y1inv.dot(Y2)
 
     # Solve generalized eigenvalue problem
     tuple = la.eig(A)
@@ -73,6 +75,22 @@ def pencil(N, X, DT):
     R, _, _, _ = la.lstsq(B, X)
 
     # Compute poles
-    S = np.log(z)/DT
+    S = np.log(z[:M])/DT
 
     return R, S
+
+def reconstruct_signal(t, R, S):
+    """
+    Given the residues and exponents, attempt to reconstruct the signal that
+    was decomposed using the matrix pencil method
+    """
+    a = np.abs(R)    # amplitude
+    p = np.angle(R)  # phase
+    x = S.real       # exponent
+    w = S.imag       # frequency
+
+    X = np.zeros(t.shape)
+    for i in range(len(R)):
+        X += a[i]*np.exp(x[i]*t)*np.cos(w[i]*t + p[i])
+
+    return X
