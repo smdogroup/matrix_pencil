@@ -2,7 +2,29 @@ import numpy as np
 from scipy import linalg as la
 import matplotlib.pyplot as plt
 
-def pencil(N, X, DT):
+def c_ks(alphas, rho):
+    """
+    Kreisselmeier-Steinhauser (KS) function to approximate maximum of input
+    exponents
+
+    Parameters
+    ----------
+    alphas : numpy.ndarray
+        real part of exponents computed from matrix pencil
+    rho : float
+        KS parameter
+
+    Returns
+    -------
+    float
+        approximate maximum of input array
+
+    """
+    m = alphas.max()
+    
+    return m + np.log(np.sum(np.exp(rho*(alphas - m))))/rho
+
+def MatrixPencil(N, X, DT):
     """
     Complex exponential fit of a sampled waveform by the Matrix Pencil Method
 
@@ -27,19 +49,74 @@ def pencil(N, X, DT):
     L = N/2 - 1
     print "L = ", L
 
-    # Fill the Hankel matrix
+    # Assemble the Hankel matrix Y
     Y = np.empty((N-L, L+1), dtype=X.dtype)
     for i in range(N-L):
         for j in range(L+1):
             Y[i,j] = X[i+j]
 
-    # Compute SVD of Hankel matrix
-    U, s, Vt = la.svd(Y, full_matrices=False)
+    # Compute the SVD of the Hankel matrix
+    U, s, VT = la.svd(Y)
+    V = VT.T
 
-    # Determine modal order
+    # Estimate the modal order M based on the singular values
+    M = EstimateModelOrder(s, L)
+
+    # Filter the right singular vectors of the Hankel matrix based on M
+    Vhat = V[:,:M]
+    V1hat = Vhat[:-1,:]
+    V2hat = Vhat[1:,:]
+
+    # Compute the SVD of V1hat in order to form generalized inverse
+    Ubar, sbar, VTbar = la.svd(V1hat.T)
+    Siginv = np.hstack((np.diag(1.0/sbar), np.zeros((M, L - M))))
+    V1inv = VTbar.T.dot(Siginv.T).dot(Ubar.T)
+
+    # Form A matrix from V1hat and V2hat to reduce to eigenvalue problem
+    A = V1inv.dot(V2hat.T)
+
+    # Solve eigenvalue problem to obtain poles
+    lam, v = np.linalg.eig(A)
+
+    # Compute the residues
+    B = np.zeros((N, M), dtype=lam.dtype)
+    for i in range(N):
+        for j in range(M):
+            B[i,j] = np.abs(lam[j])**i*np.exp(1.0j*i*np.angle(lam[j]))
+
+    r, _, _, _ = la.lstsq(B, X)
+
+    # Compute poles
+    s = np.log(lam[:M])/DT
+
+    return r, s
+
+def EstimateModelOrder(s, L):
+    """
+    Return estimate of model order based on input singular values
+
+    Parameters
+    ----------
+    s : numpy.ndarray
+        singular values
+    L : int
+        pencil parameter
+
+    Returns
+    -------
+    M : int
+        estimate of model order
+
+    """
+    # Normalize singular values by maximum
     snorm = s/s.max()
+
+    # Attempt to determine where singular values "bottom out" using the point
+    # where the difference between adjacent singular values dips below some
+    # tolerance
+    tol = 1.0e-5
     sdiff = snorm[:-1] - snorm[1:]
-    bottom_out_ind = np.argmax(sdiff[sdiff < 10.0**-5])
+    bottom_out_ind = np.argmax(sdiff[sdiff < tol])
 
     M = min(L-1, bottom_out_ind)
     print "M = ", M
@@ -49,37 +126,11 @@ def pencil(N, X, DT):
 
     plt.figure(figsize=(8, 6))
     plt.semilogy(np.arange(L), snorm[:-1] - snorm[1:])
-    plt.show()
+    #plt.show()
 
-    # Form generalized eigenvalue problem
-    Sigma = np.diag(s)[:,:M]
-    Vt = Vt[:M,:] # take M singular vectors
-    V1t = Vt[:,:-1]
-    V2t = Vt[:,1:]
-    Y1 = U.dot(Sigma).dot(V1t)
-    Y2 = U.dot(Sigma).dot(V2t)
-    Y1inv = la.pinv(Y1)
-    #A = V1t.T.dot(V2t)
-    A = Y1inv.dot(Y2)
+    return M
 
-    # Solve generalized eigenvalue problem
-    tuple = la.eig(A)
-    z = tuple[0]
-
-    # Compute the residues
-    B = np.zeros((N, M), dtype=z.dtype)
-    for i in range(N):
-        for j in range(M):
-            B[i,j] = np.abs(z[j])**i*np.exp(1.0j*i*np.angle(z[j]))
-
-    R, _, _, _ = la.lstsq(B, X)
-
-    # Compute poles
-    S = np.log(z[:M])/DT
-
-    return R, S
-
-def reconstruct_signal(t, R, S):
+def ReconstructSignal(t, R, S):
     """
     Given the residues and exponents, attempt to reconstruct the signal that
     was decomposed using the matrix pencil method

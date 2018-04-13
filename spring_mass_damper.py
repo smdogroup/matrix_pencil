@@ -16,7 +16,6 @@ print "exact damping:   ", -0.5*c/m
 
 A = np.array([[0, 1], [-k / m, -c / m]])
 
-
 def ydot(t, y):
     return A.dot(y)
 
@@ -40,13 +39,13 @@ while t_step < t_bound:
 # Decompose signal using matrix pencil method
 n = len(t)
 print "n = ", n
-N = 1000
+N = 200
 print "N = ", N
 T = np.linspace(0.0, t[-1], N)
 X = np.interp(T, t, y[0,:])
 DT = T[1] - T[0]
 
-R, S = pencil(N, X, DT)
+R, S = MatrixPencil(N, X, DT)
 print S
 print R
 
@@ -54,12 +53,11 @@ print S[np.argmax(R.real)]
 
 # Plot response
 t_recon = np.linspace(t[0], t[-1], 1000)
-x_recon = reconstruct_signal(t_recon, R, S)
+x_recon = ReconstructSignal(t_recon, R, S)
 plt.figure(figsize=(8, 6))
-plt.plot(T, X, label='original')
+plt.plot(T, X, 'orange', label='original')
 plt.plot(t_recon, x_recon, 'b--', label='reconstructed')
 plt.xlabel(r'$t$', fontsize=16)
 plt.ylabel(r'$x$', fontsize=16)
 plt.legend()
 plt.show()
-
