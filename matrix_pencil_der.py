@@ -40,7 +40,10 @@ def DalphaDlam(lam, dt):
         derivatives
 
     """
-    return np.real((1.0/lam))/dt
+    real_part = (1.0/dt)*lam.real/np.real(np.conj(lam)*lam)
+    imag_part = (1.0/dt)*lam.imag/np.real(np.conj(lam)*lam)
+
+    return real_part + 1j*imag_part
 
 def EigenDerivative():
     """
