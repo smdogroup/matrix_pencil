@@ -3,6 +3,8 @@ from scipy import linalg as la
 from matrix_pencil import *
 from matrix_pencil_der import *
 
+np.set_printoptions(precision=5)
+
 def TestDcDalpha():
     """
     Test DcDalpha function using random data and complex step approximation
@@ -72,10 +74,51 @@ def TestDalphaDlam():
     print "Rel. error r:  ", rel_error_real
     print "Rel. error i:  ", rel_error_imag
 
+    return
+
+def TestDlamDA():
+    """
+    Test DlamDA function using random data and finite difference
+    approximation
+    """
+    # Create random matrix and obtain eigenvalues
+    m = 3
+    A = np.random.random((m,m))
+    A = np.loadtxt("a.dat")
+    m = A.shape[0]
+    lam = la.eig(A, left=False, right=False)
+
+    # Perturb matrix and obtain eigenvalues
+    h = 1e-6
+    pert = np.random.random((m,m))
+    lam_pert = la.eig(A + h*pert, left=False, right=False)
+
+    # Compute finite difference approximation to derivative
+    approx = (lam_pert - lam)/h
+    print "Approximation: ", approx
+
+    # Obtain derivatives analytically
+    dlam = DlamDA(A)
+    analytic = np.zeros(lam.shape, dtype=np.complex)
+    for k in range(len(lam)):
+        analytic[k] = np.sum(dlam[:,:,k]*pert)
+    print "Analytic:      ", analytic
+
+    # Compute relative error
+    rel_error_real = (analytic.real - approx.real)/approx.real
+    rel_error_imag = (analytic.imag - approx.imag)/approx.imag
+    print "Rel. error r:  ", rel_error_real
+    print "Rel. error i:  ", rel_error_imag
+
 if __name__ == "__main__":
-    print "Testing derivative of KS function..."
+    print "Testing derivative of KS function"
+    print "---------------------------------"
     TestDcDalpha()
     print
-    print "Testing derivative of exponent extraction..."
+    print "Testing derivative of exponent extraction"
+    print "-----------------------------------------"
     TestDalphaDlam()
     print
+    print "Testing derivative of eigenvalue problem"
+    print "----------------------------------------"
+    TestDlamDA()

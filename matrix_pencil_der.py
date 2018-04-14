@@ -45,10 +45,33 @@ def DalphaDlam(lam, dt):
 
     return real_part + 1j*imag_part
 
-def EigenDerivative():
+def DlamDA(A):
     """
     Derivatives of each eigenvalue with respect to originating matrix
+
+    Parameters
+    ----------
+    A : numpy.ndarray
+        matrix
+
+    Returns
+    -------
+    dlam : numpy.ndarray
+        matrix of derivatives
+
     """
+    lam, W, V = la.eig(A, left=True, right=True)
+    print W.dot(V)
+    m = len(lam)
+    dlam = np.zeros((m, m, m), dtype=lam.dtype)
+    for k in range(m):
+        w = W[:,k]
+        v = V[:,k]
+        norm = w.dot(v)
+        print norm
+        dlam[:,:,k] = np.outer(w,v)/norm
+
+    return dlam
 
 def SVDDerivative():
     """

@@ -74,9 +74,10 @@ def MatrixPencil(N, X, DT):
 
     # Form A matrix from V1hat and V2hat to reduce to eigenvalue problem
     A = V1inv.dot(V2hat.T)
+    np.savetxt("a.dat", A)
 
     # Solve eigenvalue problem to obtain poles
-    lam, v = np.linalg.eig(A)
+    lam = la.eig(A, left=False, right=False)
 
     # Compute the residues
     B = np.zeros((N, M), dtype=lam.dtype)
