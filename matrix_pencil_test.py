@@ -82,19 +82,22 @@ def TestDlamDA():
     approximation
     """
     # Create random matrix and obtain eigenvalues
-    m = 3
+    m = 100
     A = np.random.random((m,m))
     A = np.loadtxt("a.dat")
     m = A.shape[0]
     lam = la.eig(A, left=False, right=False)
 
     # Perturb matrix and obtain eigenvalues
-    h = 1e-6
+    h = 1e-7
     pert = np.random.random((m,m))
-    lam_pert = la.eig(A + h*pert, left=False, right=False)
+    pert = np.zeros((m,m))
+    pert[0,0] += 1.0
+    lam_pos = la.eig(A + h*pert, left=False, right=False)
+    lam_neg = la.eig(A - h*pert, left=False, right=False)
 
     # Compute finite difference approximation to derivative
-    approx = (lam_pert - lam)/h
+    approx = 0.5*(lam_pos - lam_neg)/h
     print "Approximation: ", approx
 
     # Obtain derivatives analytically

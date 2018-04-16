@@ -61,14 +61,13 @@ def DlamDA(A):
 
     """
     lam, W, V = la.eig(A, left=True, right=True)
-    print W.dot(V)
+    WH = W.conj().T
     m = len(lam)
     dlam = np.zeros((m, m, m), dtype=lam.dtype)
     for k in range(m):
-        w = W[:,k]
+        w = WH[k,:]
         v = V[:,k]
         norm = w.dot(v)
-        print norm
         dlam[:,:,k] = np.outer(w,v)/norm
 
     return dlam
