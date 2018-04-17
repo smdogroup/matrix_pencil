@@ -82,17 +82,15 @@ def TestDlamDA():
     approximation
     """
     # Create random matrix and obtain eigenvalues
-    m = 100
+    m = 10
     A = np.random.random((m,m))
-    A = np.loadtxt("a.dat")
-    m = A.shape[0]
+    #A = np.loadtxt("a.dat")
+    #m = A.shape[0]
     lam = la.eig(A, left=False, right=False)
 
     # Perturb matrix and obtain eigenvalues
     h = 1e-7
     pert = np.random.random((m,m))
-    pert = np.zeros((m,m))
-    pert[0,0] += 1.0
     lam_pos = la.eig(A + h*pert, left=False, right=False)
     lam_neg = la.eig(A - h*pert, left=False, right=False)
 
@@ -103,8 +101,8 @@ def TestDlamDA():
     # Obtain derivatives analytically
     dlam = DlamDA(A)
     analytic = np.zeros(lam.shape, dtype=np.complex)
-    for k in range(len(lam)):
-        analytic[k] = np.sum(dlam[:,:,k]*pert)
+    for i in range(len(lam)):
+        analytic[i] = np.sum(dlam[i,:,:]*pert)
     print "Analytic:      ", analytic
 
     # Compute relative error
@@ -112,6 +110,69 @@ def TestDlamDA():
     rel_error_imag = (analytic.imag - approx.imag)/approx.imag
     print "Rel. error r:  ", rel_error_real
     print "Rel. error i:  ", rel_error_imag
+
+    return
+
+def TestSVDDerivative():
+    # Create random rectangular matrix
+    m = 3
+    n = 4
+    ns = min(m,n) # number of singular values
+    A = np.random.random((m,n))
+
+    # Perturb matrix and compute SVD
+    h = 1.0e-8
+    pert = np.random.random((m,n))
+    Upos, spos, VTpos = la.svd(A + h*pert)
+    Uneg, sneg, VTneg = la.svd(A - h*pert)
+
+    # Compute finite difference approximations to derivatives
+    Uapprox = 0.5*(Upos - Uneg)/h
+    sapprox = 0.5*(spos - sneg)/h
+    VTapprox = 0.5*(VTpos - VTneg)/h
+
+    # Obtain derivatives analytically
+    dU, ds, dVT = SVDDerivative(A)
+
+    Uanalytic = np.zeros((m,m))
+    for i in range(m):
+        for j in range(m):
+            Uanalytic[i,j] = np.sum(dU[i,j,:,:]*pert)
+
+    sanalytic = np.zeros(ns)
+    for i in range(ns):
+        sanalytic[i] = np.sum(ds[i,:,:]*pert)
+
+    VTanalytic = np.zeros((n,n))
+    for i in range(n):
+        for j in range(n):
+            VTanalytic[i,j] = np.sum(dVT[i,j,:,:]*pert)
+
+    # Compute relative error
+    U_rel_error = (Uanalytic - Uapprox)/Uapprox
+    print "Approx., U:    " 
+    print Uapprox
+    print "Analytic, U:   " 
+    print Uanalytic
+    print "Rel. error, U: " 
+    print U_rel_error
+    print
+
+    s_rel_error = (sanalytic - sapprox)/sapprox
+    print "Approx., s:    ", sapprox
+    print "Analytic, s:   ", sanalytic
+    print "Rel. error, s: ", s_rel_error
+    print
+
+    VT_rel_error = (VTanalytic - VTapprox)/VTapprox
+    print "Approx., VT  : " 
+    print VTapprox
+    print "Analytic, VT:  " 
+    print VTanalytic
+    print "Rel. error, VT:" 
+    print VT_rel_error
+
+    return
 
 if __name__ == "__main__":
     print "Testing derivative of KS function"
@@ -125,3 +186,7 @@ if __name__ == "__main__":
     print "Testing derivative of eigenvalue problem"
     print "----------------------------------------"
     TestDlamDA()
+    print
+    print "Testing derivative of SVD"
+    print "-------------------------"
+    TestSVDDerivative()
