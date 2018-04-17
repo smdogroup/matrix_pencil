@@ -174,7 +174,68 @@ def TestSVDDerivative():
 
     return
 
+def testDcDA():
+    """
+    Test derivative of output of KS function w.r.t. eigenvalue problem matrix A
+    """
+    n = 10
+    h = 1.0e-6
+    dt = 0.1
+    rho = 100
+
+    # Create random matrix for eigenvalue problem and obtain damping
+    A = np.random.random((n,n))
+    lam = la.eig(A, left=False, right=False)
+    alphas = ExtractDamping(lam, dt)
+
+    # Perturb the matrix and obtain eigenvalues
+    pert = np.random.random((n,n))
+    Apos = A + h*pert
+    Aneg = A - h*pert
+
+    # Compute the perturbed eigenvalues
+    lampos = la.eig(Apos, left=False, right=False)
+    lamneg = la.eig(Aneg, left=False, right=False)
+
+    # Compute the pertubed damping from the eigenvalues
+    alphapos = ExtractDamping(lampos, dt)
+    alphaneg = ExtractDamping(lamneg, dt)
+
+    # Compute the perturbed outputs of the KS_function
+    cpos = c_ks(alphapos, rho)
+    cneg = c_ks(alphaneg, rho)
+
+    # Compute the finite difference approximation to the derivative
+    approx = 0.5*(cpos - cneg)/h
+    print "Approximation: ", approx
+
+    # Compute the analytic derivative
+    dcda = DcDalpha(alphas, rho)
+    dadlam = DalphaDlam(lam, dt)
+    dlamdA = DlamDA(A)
+    analytic = 0.0
+    for i in range(n):
+        for j in range(n):
+            for k in range(n):
+                analytic += dcda[i]*(dadlam[i].real*dlamdA[i,j,k].real + 
+                                     dadlam[i].imag*dlamdA[i,j,k].imag)*pert[j,k]
+    print "Analytic:      ", analytic
+
+    # Compute relative error
+    rel_error = (analytic - approx)/approx
+    print "Rel. error:    ", rel_error
+
+    
+    
+
+    return
+
+
 if __name__ == "__main__":
+    print "======================"
+    print "Basic derivative tests"
+    print "======================"
+    print
     print "Testing derivative of KS function"
     print "---------------------------------"
     TestDcDalpha()
@@ -190,3 +251,11 @@ if __name__ == "__main__":
     print "Testing derivative of SVD"
     print "-------------------------"
     TestSVDDerivative()
+    print
+    print "========================"
+    print "Chained derivative tests"
+    print "========================"
+    print
+    print "Testing dc/dA"
+    print "-------------"
+    testDcDA()

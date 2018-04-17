@@ -131,6 +131,9 @@ def EstimateModelOrder(s, L):
 
     return M
 
+def ExtractDamping(lam, dt):
+    return np.log(lam).real/dt
+
 def ReconstructSignal(t, R, S):
     """
     Given the residues and exponents, attempt to reconstruct the signal that

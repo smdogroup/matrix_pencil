@@ -92,8 +92,8 @@ def SVDDerivative(A):
 
     Notes 
     -----
-    I'm not addressing the case of degenerate SVDs. I expect that no two
-    singular values will be identical
+    This function does not address the case of degenerate SVDs. It expects that
+    no two singular values will be identical
 
     """
     m = A.shape[0]
