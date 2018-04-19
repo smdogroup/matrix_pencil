@@ -2,6 +2,7 @@ import numpy as np
 from scipy import linalg as la
 from matrix_pencil import *
 from matrix_pencil_der import *
+from matrix_chain import *
 
 np.set_printoptions(precision=5)
 
@@ -185,7 +186,7 @@ def testDcDA():
 
     # Create random matrix for eigenvalue problem and obtain damping
     A = np.random.random((n,n))
-    lam = la.eig(A, left=False, right=False)
+    lam, W, V = la.eig(A, left=True, right=True)
     alphas = ExtractDamping(lam, dt)
 
     # Perturb the matrix and obtain eigenvalues
@@ -211,22 +212,15 @@ def testDcDA():
 
     # Compute the analytic derivative
     dcda = DcDalpha(alphas, rho)
-    dadlam = DalphaDlam(lam, dt)
-    dlamdA = DlamDA(A)
-    analytic = 0.0
-    for i in range(n):
-        for j in range(n):
-            for k in range(n):
-                analytic += dcda[i]*(dadlam[i].real*dlamdA[i,j,k].real + 
-                                     dadlam[i].imag*dlamdA[i,j,k].imag)*pert[j,k]
+    dcdl = DalphaDlamTrans(dcda, lam, dt)
+    dcdA = DlamDATrans(dcdl, W, V)
+
+    analytic = np.sum(dcdA*pert)
     print "Analytic:      ", analytic
 
     # Compute relative error
     rel_error = (analytic - approx)/approx
     print "Rel. error:    ", rel_error
-
-    
-    
 
     return
 
