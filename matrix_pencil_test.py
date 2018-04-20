@@ -175,24 +175,36 @@ def TestSVDDerivative():
 
     return
 
-def testDcDA():
+def TestChain():
     """
-    Test derivative of output of KS function w.r.t. eigenvalue problem matrix A
+    Test derivative of output of KS function w.r.t. something
     """
-    n = 10
+    m = 90
+    n = 110
     h = 1.0e-6
     dt = 0.1
     rho = 100
 
+    # Create random V1 and V2 matrices
+    V1T = np.random.random((m,n))
+    V2T = np.random.random((m,n))
+    Ubar, sbar, VTbar = la.svd(V1T)
+    Siginv = np.vstack((np.diag(1.0/sbar), np.zeros((n-m,m))))
+
     # Create random matrix for eigenvalue problem and obtain damping
-    A = np.random.random((n,n))
+    D = Ubar.T.dot(V2T)
+    A = VTbar.T.dot(Siginv).dot(D)
     lam, W, V = la.eig(A, left=True, right=True)
     alphas = ExtractDamping(lam, dt)
 
     # Perturb the matrix and obtain eigenvalues
-    pert = np.random.random((n,n))
-    Apos = A + h*pert
-    Aneg = A - h*pert
+    spert = np.random.random(m)
+    spos = sbar + h*spert
+    sneg = sbar - h*spert
+    Sigpos = np.vstack((np.diag(1.0/spos), np.zeros((n-m,m))))
+    Signeg = np.vstack((np.diag(1.0/sneg), np.zeros((n-m,m))))
+    Apos = VTbar.T.dot(Sigpos).dot(D)
+    Aneg = VTbar.T.dot(Signeg).dot(D)
 
     # Compute the perturbed eigenvalues
     lampos = la.eig(Apos, left=False, right=False)
@@ -214,8 +226,9 @@ def testDcDA():
     dcda = DcDalpha(alphas, rho)
     dcdl = DalphaDlamTrans(dcda, lam, dt)
     dcdA = DlamDATrans(dcdl, W, V)
+    dcds = dAdsbarTrans(dcdA, VTbar, Siginv, D)
 
-    analytic = np.sum(dcdA*pert)
+    analytic = np.sum(dcds*spert)
     print "Analytic:      ", analytic
 
     # Compute relative error
@@ -252,4 +265,4 @@ if __name__ == "__main__":
     print
     print "Testing dc/dA"
     print "-------------"
-    testDcDA()
+    TestChain()

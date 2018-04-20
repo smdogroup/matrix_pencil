@@ -61,10 +61,98 @@ def DlamDATrans(dcdl, W, V):
 
     return dcdA
 
-def dAdV2hatTrans(dcdA, V1inv):
+def dAdUbarTrans(dcdA, B, V2T):
     """
-    Apply action of [d(A)/d(V2hat^{T})]^{T} to the array of derivatives
-    [d(c)/d(A)]^{T} to obtain the derivatives d(A)/d(V2hat^{T})
+    Apply action of [d(A)/d(Ubar)]^{T} to the array of derivatives
+    [d(c)/d(A)]^{T} to obtain the derivatives d(c)/d(Ubar)
+
+    Parameters
+    ----------
+    dcdA : numpy.ndarray
+        array of derivatives d(c)/d(A)
+    B : numpy.ndarray
+        product of Vbar and Siginv
+    V2T : numpy.ndarray
+        filtered right singular vectors of Y1 matrix
+
+    Returns
+    -------
+    dcdUbar : numpy.ndarray
+        array of derivatives d(c)/d(Ubar)
+
+    """
+    m = B.shape[1]
+    dcdUbar = np.zeros((m,m))
+
+    for i in range(m):
+        for j in range(m):
+            dcdUbar[i,j] = np.sum(dcdA*np.outer(B[:,j], V2T[i,:]))
+
+    return dcdUbar
+
+def dAdsbarTrans(dcdA, VTbar, Siginv, D):
+    """
+    Apply action of [d(A)/d(sbar)]^{T} to the array of derivatives
+    [d(c)/d(A)]^{T} to obtain the derivatives d(c)/d(sbar)
+
+    Parameters
+    ----------
+    dcdA : numpy.ndarray
+        array of derivatives d(c)/d(A)
+    VTbar : numpy.ndarray
+        right singular vectors of V1T matrix
+    Siginv : numpy.ndarray
+        reciprocal singular values
+    D : numpy.ndarray
+        product of tranpose Ubar and V2T
+
+    Returns
+    -------
+    dcdUbar : numpy.ndarray
+        array of derivatives d(c)/d(Ubar)
+
+    """
+    sinv = np.diag(Siginv)
+    n = len(sinv)
+
+    dcds = np.zeros(n)
+
+    for i in range(n):
+        dcds[i] = -VTbar[i,:].dot(dcdA).dot(D[i,:])*sinv[i]**2
+
+    return dcds
+
+def dAdVTbarTrans(dcdA, C):
+    """
+    Apply action of [d(A)/d(VTbar)]^{T} to the array of derivatives
+    [d(c)/d(A)]^{T} to obtain the derivatives d(c)/d(VTbar)
+
+    Parameters
+    ----------
+    dcdA : numpy.ndarray
+        array of derivatives d(c)/d(A)
+    C : numpy.ndarray
+        product of Siginv, tranpose Ubar, and V2hat
+
+    Returns
+    -------
+    dcdVTbar : numpy.ndarray
+        array of derivatives d(c)/d(VTbar)
+
+    """
+    n = dcdA.shape[0]
+    dcdVTbar = np.zeros((n,n))
+
+    for i in range(n):
+        for j in range(n):
+            dcdVTbar[i,j] = np.sum(dcdA[j,:]*C[i,:])
+
+    return dcdVTbar
+
+def dAdV2Trans(dcdA, V1inv):
+    """
+    Apply action of [d(A)/d(V2^{T})]^{T} to the array of derivatives
+    [d(c)/d(A)]^{T} to obtain the derivatives d(c)/d(V2^{T})
 
     Parameters
     ----------
@@ -75,17 +163,17 @@ def dAdV2hatTrans(dcdA, V1inv):
 
     Returns
     -------
-    dcdV2 : numpy.ndarray
-        vector of derivatives d(c)/d(V2hat^{T})
+    dcdV2T : numpy.ndarray
+        vector of derivatives d(c)/d(V2^{T})
 
     """
-    m = V1inv.shape[0]
-    n = V1inv.shape[1]
+    m = V1inv.shape[1]
+    n = V1inv.shape[0]
 
-    dcdV2 = np.zeros((m,n))
+    dcdV2T = np.zeros((m,n))
 
     for i in range(m):
         for j in range(n):
-            dcdV2 = np.sum(dcdA[:,i]*V1inv[:,j])
+            dcdV2T[i,j] = np.sum(dcdA[:,j]*V1inv[:,i])
 
-    return dcdV2
+    return dcdV2T

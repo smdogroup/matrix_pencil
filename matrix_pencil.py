@@ -57,23 +57,22 @@ def MatrixPencil(N, X, DT):
 
     # Compute the SVD of the Hankel matrix
     U, s, VT = la.svd(Y)
-    V = VT.T
 
     # Estimate the modal order M based on the singular values
     M = EstimateModelOrder(s, L)
 
     # Filter the right singular vectors of the Hankel matrix based on M
-    Vhat = V[:,:M]
-    V1hat = Vhat[:-1,:]
-    V2hat = Vhat[1:,:]
+    VT = VT[:M,:]
+    V1T = VT[:,:-1]
+    V2T = VT[:,1:]
 
     # Compute the SVD of V1hat in order to form generalized inverse
-    Ubar, sbar, VTbar = la.svd(V1hat.T)
-    Siginv = np.hstack((np.diag(1.0/sbar), np.zeros((M, L - M))))
-    V1inv = VTbar.T.dot(Siginv.T).dot(Ubar.T)
+    Ubar, sbar, VTbar = la.svd(V1T)
+    Siginv = np.vstack((np.diag(1.0/sbar), np.zeros((L-M, M))))
+    V1inv = VTbar.T.dot(Siginv).dot(Ubar.T)
 
-    # Form A matrix from V1hat and V2hat to reduce to eigenvalue problem
-    A = V1inv.dot(V2hat.T)
+    # Form A matrix from V1T and V2T to reduce to eigenvalue problem
+    A = V1inv.dot(V2T)
     np.savetxt("a.dat", A)
 
     # Solve eigenvalue problem to obtain poles
