@@ -72,14 +72,18 @@ def DlamDA(A):
 
     return dlam
 
-def SVDDerivative(A):
+def SVDDerivative(U, s, VT):
     """
     Derivatives of SVD of rectangular matrix of size m x n
 
     Parameters
     ----------
-    A : numpy.ndarray
-        matrix
+    U : numpy.ndarray
+        left singular vectors
+    s : numpy.ndarray
+        singular values
+    VT : numpy.ndarray
+        right singular vectors
 
     Returns
     -------
@@ -95,54 +99,58 @@ def SVDDerivative(A):
     This function does not address the case of degenerate SVDs. It expects that
     no two singular values will be identical
 
+    You can find an explanation for the algorithm here at:
+    http://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
+
     """
-    m = A.shape[0]
-    n = A.shape[1]
-    ns = min(m, n) # number of singular values
-    U, s, VT = la.svd(A)
+    m = U.shape[0]
+    n = VT.shape[1]
+
+    assert(m <= n), "Input matrix should have dimensions m <= n. Use transpose?"
 
     # Allocate output arrays
     dU = np.zeros((m,m,m,n))
-    ds = np.zeros((ns,m,n))
+    ds = np.zeros((m,m,n))
     dVT = np.zeros((n,n,m,n))
 
-    # Allocate skew-symmetric matrices
-    WU = np.zeros((m,m))
-    WV = np.zeros((n,n))
+    # Square matrix of singular values
+    S1 = np.diag(s)
 
     for k in range(m):
         for l in range(n):
-            # Form right-hand side for derivatives w.r.t. A[k,l]
-            B = np.outer(U[k,:], VT[:,l])
+            dP = np.outer(U[k,:], VT[:,l])
+            dP1 = dP[:,:m]
 
-            # Compute derivatives of singular values
-            ds[:,k,l] = np.diag(B)
+            # Extract diagonal for ds
+            ds[:,k,l] = np.diag(dP1)
 
-            # Evaluate skew-symmetric matrices
-            for i in range(max(m,n)):
-                for j in range(i+1,max(m,n)):
-                    # Form 2x2 system
-                    a11 = 0.0 if j+1 > ns else s[j]
-                    a12 = 0.0 if i+1 > ns else s[i]
-                    a21 = a12 
-                    a22 = a11
-                    b1 = 0.0 if i+1 > m or j+1 > n else B[i,j]
-                    b2 = 0.0 if j+1 > m or i+1 > n else -B[j,i]
+            # Form skew-symmetric F matrix
+            F = np.zeros((m,m))
+            for i in range(m):
+                for j in range(i+1,m):
+                    F[i,j] = 1.0/(s[j]**2 - s[i]**2)
+                    F[j,i] = 1.0/(s[i]**2 - s[j]**2)
 
-                    # Solve by Cramer's rule
-                    wu = (b1*a22 - b2*a12)/(a11*a22 - a21*a12) 
-                    wv = (a11*b2 - a21*b1)/(a11*a22 - a21*a12) 
+            # Compute dC matrix and skew-symmetric part of the dD matrix
+            dC = F*(dP1.dot(S1) + S1.dot(dP1.T))
+            dD1 = F*(S1.dot(dP1) + dP1.T.dot(S1))
 
-                    # Store results in skew-symmetric matrices
-                    if i < m and j < m:
-                        WU[i,j] = wu
-                        WU[j,i] = -wu
-                    if i < n and j < n:
-                        WV[i,j] = wv
-                        WV[j,i] = -wv
+            # Assemble dD matrix
+            if m < n:
+                dP2 = dP[:,m:]
+                S1inv = np.diag(1.0/s)
+                dD2 = S1inv.dot(dP2)
 
-            # Compute derivatives of singular vectors
-            dU[:,:,k,l] = U.dot(WU)
-            dVT[:,:,k,l] = WV.dot(VT)
+                dDT = np.zeros((n,n))
+                dDT[:m,:m] = -dD1
+                dDT[:m,m:] = dD2
+                dDT[m:,:m] = -dD2.T
+
+            else:
+                dDT = -dD1
+
+            # Compute dU and dVT sensitivities from dC and dD
+            dU[:,:,k,l] = U.dot(dC)
+            dVT[:,:,k,l] = dDT.dot(VT)
 
     return dU, ds, dVT

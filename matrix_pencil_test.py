@@ -116,10 +116,11 @@ def TestDlamDA():
 
 def TestSVDDerivative():
     # Create random rectangular matrix
-    m = 3
+    m = 4
     n = 4
     ns = min(m,n) # number of singular values
     A = np.random.random((m,n))
+    U, s, VT = la.svd(A)
 
     # Perturb matrix and compute SVD
     h = 1.0e-8
@@ -133,7 +134,7 @@ def TestSVDDerivative():
     VTapprox = 0.5*(VTpos - VTneg)/h
 
     # Obtain derivatives analytically
-    dU, ds, dVT = SVDDerivative(A)
+    dU, ds, dVT = SVDDerivative(U, s, VT)
 
     Uanalytic = np.zeros((m,m))
     for i in range(m):
@@ -179,32 +180,43 @@ def TestChain():
     """
     Test derivative of output of KS function w.r.t. something
     """
-    m = 90
-    n = 110
+    m = 9
+    n = 11
     h = 1.0e-6
     dt = 0.1
     rho = 100
 
-    # Create random V1 and V2 matrices
-    V1T = np.random.random((m,n))
-    V2T = np.random.random((m,n))
+    # Create random Vhat matrix
+    Vhat = np.random.random((m,n+1))
+    V1T = Vhat[:,:-1]
+    V2T = Vhat[:,1:]
     Ubar, sbar, VTbar = la.svd(V1T)
-    Siginv = np.vstack((np.diag(1.0/sbar), np.zeros((n-m,m))))
 
     # Create random matrix for eigenvalue problem and obtain damping
-    D = Ubar.T.dot(V2T)
-    A = VTbar.T.dot(Siginv).dot(D)
+    Siginv = np.vstack((np.diag(1.0/sbar), np.zeros((n-m,m))))
+    A = VTbar.T.dot(Siginv).dot(Ubar.T).dot(V2T)
     lam, W, V = la.eig(A, left=True, right=True)
     alphas = ExtractDamping(lam, dt)
 
     # Perturb the matrix and obtain eigenvalues
-    spert = np.random.random(m)
-    spos = sbar + h*spert
-    sneg = sbar - h*spert
+    Vhatpert = np.random.random((m,n+1))
+    Vhatpos = Vhat + h*Vhatpert
+    Vhatneg = Vhat - h*Vhatpert
+
+    V1Tpos = Vhatpos[:,:-1]
+    V2Tpos = Vhatpos[:,1:]
+
+    V1Tneg = Vhatneg[:,:-1]
+    V2Tneg = Vhatneg[:,1:]
+
+    Upos, spos, VTpos = la.svd(V1Tpos)
+    Uneg, sneg, VTneg = la.svd(V1Tneg)
+
     Sigpos = np.vstack((np.diag(1.0/spos), np.zeros((n-m,m))))
     Signeg = np.vstack((np.diag(1.0/sneg), np.zeros((n-m,m))))
-    Apos = VTbar.T.dot(Sigpos).dot(D)
-    Aneg = VTbar.T.dot(Signeg).dot(D)
+
+    Apos = VTpos.T.dot(Sigpos).dot(Upos.T).dot(V2Tpos)
+    Aneg = VTneg.T.dot(Signeg).dot(Uneg.T).dot(V2Tneg)
 
     # Compute the perturbed eigenvalues
     lampos = la.eig(Apos, left=False, right=False)
@@ -223,12 +235,16 @@ def TestChain():
     print "Approximation: ", approx
 
     # Compute the analytic derivative
+    V1inv = VTbar.T.dot(Siginv).dot(Ubar.T)
+
     dcda = DcDalpha(alphas, rho)
     dcdl = DalphaDlamTrans(dcda, lam, dt)
     dcdA = DlamDATrans(dcdl, W, V)
-    dcds = dAdsbarTrans(dcdA, VTbar, Siginv, D)
+    dcdV1T = dAdV1Trans(dcdA, Ubar, sbar, VTbar, V2T)
+    dcdV2T = dAdV2Trans(dcdA, V1inv)
+    dcdVhat = dV12dVhatTrans(dcdV1T, dcdV2T)
 
-    analytic = np.sum(dcds*spert)
+    analytic = np.sum(dcdVhat*Vhatpert)
     print "Analytic:      ", analytic
 
     # Compute relative error
@@ -237,24 +253,23 @@ def TestChain():
 
     return
 
-
 if __name__ == "__main__":
-    print "======================"
-    print "Basic derivative tests"
-    print "======================"
-    print
-    print "Testing derivative of KS function"
-    print "---------------------------------"
-    TestDcDalpha()
-    print
-    print "Testing derivative of exponent extraction"
-    print "-----------------------------------------"
-    TestDalphaDlam()
-    print
-    print "Testing derivative of eigenvalue problem"
-    print "----------------------------------------"
-    TestDlamDA()
-    print
+    #print "======================"
+    #print "Basic derivative tests"
+    #print "======================"
+    #print
+    #print "Testing derivative of KS function"
+    #print "---------------------------------"
+    #TestDcDalpha()
+    #print
+    #print "Testing derivative of exponent extraction"
+    #print "-----------------------------------------"
+    #TestDalphaDlam()
+    #print
+    #print "Testing derivative of eigenvalue problem"
+    #print "----------------------------------------"
+    #TestDlamDA()
+    #print
     print "Testing derivative of SVD"
     print "-------------------------"
     TestSVDDerivative()

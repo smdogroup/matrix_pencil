@@ -3,6 +3,7 @@ Matrix pencil derivatives, but now in chain rule form
 """
 import numpy as np
 from scipy import linalg as la
+from matrix_pencil_der import *
 
 def DalphaDlamTrans(dcda, lam, dt):
     """
@@ -73,7 +74,7 @@ def dAdUbarTrans(dcdA, B, V2T):
     B : numpy.ndarray
         product of Vbar and Siginv
     V2T : numpy.ndarray
-        filtered right singular vectors of Y1 matrix
+        filtered right singular vectors of Y2 matrix
 
     Returns
     -------
@@ -132,7 +133,7 @@ def dAdVTbarTrans(dcdA, C):
     dcdA : numpy.ndarray
         array of derivatives d(c)/d(A)
     C : numpy.ndarray
-        product of Siginv, tranpose Ubar, and V2hat
+        product of Siginv, tranpose Ubar, and V2T
 
     Returns
     -------
@@ -148,6 +149,61 @@ def dAdVTbarTrans(dcdA, C):
             dcdVTbar[i,j] = np.sum(dcdA[j,:]*C[i,:])
 
     return dcdVTbar
+
+def dAdV1Trans(dcdA, Ubar, sbar, VTbar, V2T):
+    """
+    Apply action of [d(A)/d(V1^{T})]^{T} to the array of derivatives
+    [d(c)/d(A)]^{T} to obtain the derivatives d(c)/d(V1^{T})
+
+    Parameters
+    ----------
+    dcdA : numpy.ndarray
+        array of derivatives d(c)/d(A)
+    Ubar : numpy.ndarray
+        left singular vectors from SVD of V1^{T}
+    sbar : numpy.ndarray
+        singular values from SVD of V1^{T}
+    VTbar : numpy.ndarray
+        right singular vectors from SVD of V1^{T}
+    V2T : numpy.ndarray
+        filtered right singular vectors of Y2 matrix
+
+    Returns
+    -------
+    dcdV1T : numpy.ndarray
+        vector of derivatives d(c)/d(V1^{T})
+
+    """
+    m = Ubar.shape[0]
+    n = VTbar.shape[1]
+
+    # Compute the derivatives d(c)/d(Ubar)
+    Siginv = np.vstack((np.diag(1.0/sbar), np.zeros((n-m,m))))
+    B = VTbar.T.dot(Siginv)
+    dcdU = dAdUbarTrans(dcdA, B, V2T)
+
+    # Compute the derivatives d(c)/d(sbar)
+    D = Ubar.T.dot(V2T)
+    dcds = dAdsbarTrans(dcdA, VTbar, Siginv, D)
+
+    # Compute the derivatives d(c)/d(VTbar)
+    C = Siginv.dot(D)
+    dcdVT = dAdVTbarTrans(dcdA, C)
+
+    # Compute SVD derivatives d(Ubar)/d(V1^{T}), d(sbar)/d(V1^{T}), and
+    # d(VTbar)/d(V1^{T})
+    dU, ds, dVT = SVDDerivative(Ubar, sbar, VTbar)
+
+    # Add contributions into d(c)/d(V1^{T})
+    dcdV1T = np.zeros((m,n))
+    
+    for i in range(m):
+        for j in range(n):
+            dcdV1T[i,j] += np.sum(dcdU*dU[:,:,i,j])
+            dcdV1T[i,j] += np.sum(dcds*ds[:,i,j])
+            dcdV1T[i,j] += np.sum(dcdVT*dVT[:,:,i,j])
+
+    return dcdV1T
 
 def dAdV2Trans(dcdA, V1inv):
     """
@@ -177,3 +233,29 @@ def dAdV2Trans(dcdA, V1inv):
             dcdV2T[i,j] = np.sum(dcdA[:,j]*V1inv[:,i])
 
     return dcdV2T
+
+def dV12dVhatTrans(dcdV1T, dcdV2T):
+    """
+    Apply action of [d(V1^{T})/d(Vhat^{T})]^{T} to the array of derivatives
+    [d(c)/d(V1^{T})]^{T} and the action of [d(V2^{T})/d(Vhat^{T})]^{T} to the
+    array of derivatives [d(c)/d(V1^{T})]^{T} and combine to obtain the
+    derivatives d(c)/d(Vhat^{T})
+
+    Parameters
+    ----------
+    dcdV1T : numpy.ndarray
+        vector of derivatives d(c)/d(V1^{T})
+    dcdV2T : numpy.ndarray
+        vector of derivatives d(c)/d(V2^{T})
+
+    Returns
+    -------
+    dcdVhat : numpy.ndarray
+        vector of derivatives d(c)/d(Vhat^{T})
+
+    """
+    M = dcdV1T.shape[0]
+    dcdVhat = np.hstack((dcdV1T, np.zeros(M).reshape((M,1)))) + \
+              np.hstack((np.zeros(M).reshape((M,1)), dcdV2T))
+
+    return dcdVhat
