@@ -1,150 +1,228 @@
 import numpy as np
 from scipy import linalg as la
 import matplotlib.pyplot as plt
+from matrix_pencil_der import *
 
-def c_ks(alphas, rho):
-    """
-    Kreisselmeier-Steinhauser (KS) function to approximate maximum of input
-    exponents
+class MatrixPencil(object):
+    def __init__(self, X, dt, output=False, rho=100, tol = 1.0e-5):
+        """
+        Provide the capability to:
+        1) decompose input signal into a series of complex exponentials by the
+        Matrix Pencil Method; and 
+        2) compute the derivative of the KS (Kreisselmeier-Steinhauser)
+        aggregation of the real exponents (damping) with respect to the input
+        data.
 
-    Parameters
-    ----------
-    alphas : numpy.ndarray
-        real part of exponents computed from matrix pencil
-    rho : float
-        KS parameter
+        Parameters
+        ----------
+        X : numpy.ndarray
+            array containing sampled waveform
+        dt : float
+            sample interval
+        output : bool
+            choose whether or not to provide information
+        rho : float
+            KS parameter
+        tol : cutoff for singular values used in model order estimation
 
-    Returns
-    -------
-    float
-        approximate maximum of input array
+        """
+        self.X = X
+        self.dt = dt
+        self.output = output
+        self.rho = rho
+        self.tol = tol
 
-    """
-    m = alphas.max()
-    
-    return m + np.log(np.sum(np.exp(rho*(alphas - m))))/rho
+        # Set the pencil parameter L
+        self.N = X.shape[0]
+        self.L = self.N/2 - 1
 
-def MatrixPencil(N, X, DT):
-    """
-    Complex exponential fit of a sampled waveform by the Matrix Pencil Method
+        if self.output:
+            print "Initializing Matrix Pencil method..."
+            print "Number of samples, N = ", self.N
+            print "Pencil parameter, L = ", self.L
 
-    Parameters
-    ----------
-    N : int
-        number of data samples
-    X : numpy.ndarray
-        array containing sampled waveform
-    DT : float
-        sample interval
+        # Store model order
+        self.M = None
 
-    Returns
-    -------
-    R : numpy.ndarray
-        array containing residues (amplitudes)
-    S : numpy.ndarray
-        array containing exponents (poles)
+        # Save SVD of Hankel matrix
+        self.U = None
+        self.s = None
+        self.VT = None
 
-    """
-    # Set the pencil parameter L
-    L = N/2 - 1
-    print "L = ", L
+        # Save SVD and generalized inverse of filtered right singular vectors V1
+        self.Ubar = None
+        self.sbar = None
+        self.VTbar = None
+        self.V1inv = None
 
-    # Assemble the Hankel matrix Y
-    Y = np.empty((N-L, L+1), dtype=X.dtype)
-    for i in range(N-L):
-        for j in range(L+1):
-            Y[i,j] = X[i+j]
+        # Save right singular vectors V2
+        self.V2T = None
 
-    # Compute the SVD of the Hankel matrix
-    U, s, VT = la.svd(Y)
+        # Save eigenvalues and eigenvectors of A matrix
+        self.lam = None
+        self.W = None
+        self.V = None
 
-    # Estimate the modal order M based on the singular values
-    M = EstimateModelOrder(s, L)
+        # Save amplitudes, damping, frequencies, and phases
+        self.amps = None
+        self.damp = None
+        self.freq = None
+        self.faze = None
 
-    # Filter the right singular vectors of the Hankel matrix based on M
-    VT = VT[:M,:]
-    V1T = VT[:,:-1]
-    V2T = VT[:,1:]
+        # Save input KS parameter
 
-    # Compute the SVD of V1hat in order to form generalized inverse
-    Ubar, sbar, VTbar = la.svd(V1T)
-    Siginv = np.vstack((np.diag(1.0/sbar), np.zeros((L-M, M))))
-    V1inv = VTbar.T.dot(Siginv).dot(Ubar.T)
+    def ComputeDampingAndFrequency(self):
+        """
+        Compute the damping and frequencies of the complex exponentials 
 
-    # Form A matrix from V1T and V2T to reduce to eigenvalue problem
-    A = V1inv.dot(V2T)
-    np.savetxt("a.dat", A)
+        """
+        # Assemble the Hankel matrix Y from the samples X
+        Y = np.empty((self.N-self.L, self.L+1), dtype=self.X.dtype)
+        for i in range(self.N-self.L):
+            for j in range(self.L+1):
+                Y[i,j] = self.X[i+j]
+                
+        # Compute the SVD of the Hankel matrix
+        self.U, self.s, self.VT = la.svd(Y)
 
-    # Solve eigenvalue problem to obtain poles
-    lam = la.eig(A, left=False, right=False)
+        # Estimate the modal order M based on the singular values
+        self.EstimateModelOrder()
 
-    # Compute the residues
-    B = np.zeros((N, M), dtype=lam.dtype)
-    for i in range(N):
-        for j in range(M):
-            B[i,j] = np.abs(lam[j])**i*np.exp(1.0j*i*np.angle(lam[j]))
+        # Filter the right singular vectors of the Hankel matrix based on M
+        Vhat = self.VT[:self.M,:]
+        V1T = Vhat[:,:-1]
+        self.V2T = Vhat[:,1:]
 
-    r, _, _, _ = la.lstsq(B, X)
+        # Compute the SVD of V1hat in order to form generalized inverse
+        self.Ubar, self.sbar, self.VTbar = la.svd(V1T)
+        Siginv = np.vstack((np.diag(1.0/self.sbar), 
+                            np.zeros((self.L-self.M, self.M))))
+        self.V1inv = self.VTbar.T.dot(Siginv).dot(self.Ubar.T)
 
-    # Compute poles
-    s = np.log(lam[:M])/DT
+        # Form A matrix from V1T and V2T to reduce to eigenvalue problem
+        A = self.V1inv.dot(self.V2T)
 
-    return r, s
+        # Solve eigenvalue problem to obtain poles
+        self.lam, self.W, self.V = la.eig(A, left=True, right=True)
 
-def EstimateModelOrder(s, L):
-    """
-    Return estimate of model order based on input singular values
+        # Compute damping and freqency
+        s = np.log(self.lam[:self.M])/self.dt
+        self.damp = s.real
+        self.freq = s.imag
 
-    Parameters
-    ----------
-    s : numpy.ndarray
-        singular values
-    L : int
-        pencil parameter
+        return
 
-    Returns
-    -------
-    M : int
-        estimate of model order
+    def EstimateModelOrder(self):
+        """
+        Store estimate of model order based on input singular values
 
-    """
-    # Normalize singular values by maximum
-    snorm = s/s.max()
+        Notes
+        -----
+        This is a pretty crude method for estimating the model order.
+        Development of a more sophisticated method would probably yield greater
+        robustness
 
-    # Attempt to determine where singular values "bottom out" using the point
-    # where the difference between adjacent singular values dips below some
-    # tolerance
-    tol = 1.0e-5
-    sdiff = snorm[:-1] - snorm[1:]
-    bottom_out_ind = np.argmax(sdiff[sdiff < tol])
+        """
+        # Normalize singular values of Hankel matrix by maximum
+        snorm = self.s/self.s.max()
 
-    M = min(L-1, bottom_out_ind)
-    print "M = ", M
-    plt.figure(figsize=(8, 6))
-    plt.scatter(bottom_out_ind, snorm[bottom_out_ind], s=30, c='r')
-    plt.semilogy(np.arange(L+1), snorm)
+        # Attempt to determine where singular values "bottom out" using the point
+        # where the difference between adjacent singular values dips below some
+        # tolerance
+        sdiff = snorm[:-1] - snorm[1:]
+        bottom_out_ind = np.argmax(sdiff[np.logical_and(sdiff < self.tol, sdiff > 0.0)])
 
-    plt.figure(figsize=(8, 6))
-    plt.semilogy(np.arange(L), snorm[:-1] - snorm[1:])
-    #plt.show()
+        self.M = min(self.L-1, bottom_out_ind+1)
+        
+        if self.output:
+            print "Model order, M = ", self.M
+            plt.figure(figsize=(8, 6))
+            plt.scatter(bottom_out_ind, snorm[bottom_out_ind], s=30, c='r')
+            plt.semilogy(np.arange(self.L+1), snorm)
+            plt.title('Normalized singular values', fontsize=16)
 
-    return M
+            plt.figure(figsize=(8, 6))
+            plt.semilogy(np.arange(self.L), sdiff)
+            plt.title('Difference between adjacent singular values', fontsize=16)
+            plt.show()
 
-def ExtractDamping(lam, dt):
-    return np.log(lam).real/dt
+        return
 
-def ReconstructSignal(t, R, S):
-    """
-    Given the residues and exponents, attempt to reconstruct the signal that
-    was decomposed using the matrix pencil method
-    """
-    a = np.abs(R)    # amplitude
-    p = np.angle(R)  # phase
-    x = S.real       # exponent
-    w = S.imag       # frequency
+    def AggregateDamping(self):
+        """
+        Kreisselmeier-Steinhauser (KS) function to approximate maximum real
+        part of exponent
 
-    X = np.zeros(t.shape)
-    for i in range(len(R)):
-        X += a[i]*np.exp(x[i]*t)*np.cos(w[i]*t + p[i])
+        Returns
+        -------
+        float
+            approximate maximum of real part of exponents
 
-    return X
+        """
+        m = self.damp.max()
+        
+        return m + np.log(np.sum(np.exp(self.rho*(self.damp - m))))/self.rho
+
+    def AggregateDampingDer(self):
+        """
+        Use the data saved prior to computing the aggregate damping to compute
+        the derivative of the damping with respect to the input data
+
+        """
+        dcda = DcDalpha(self.damp, self.rho)
+        dcdl = DalphaDlamTrans(dcda, self.lam, self.dt)
+        dcdA = DlamDATrans(dcdl, self.W, self.V)
+        dcdV1T = dAdV1Trans(dcdA, self.Ubar, self.sbar, self.VTbar, self.V2T)
+        dcdV2T = dAdV2Trans(dcdA, self.V1inv)
+        dcdVhat = dV12dVhatTrans(dcdV1T, dcdV2T)
+        dcdVT = dVTdVhatTrans(dcdVhat)
+        dcdY = dVTdYTrans(dcdVT, self.U, self.s, self.VT)
+        dcdX = dYdXTrans(dcdY)
+
+        return dcdX
+
+    def ComputeAmplitudeAndPhase(self):
+        """
+        Compute the amplitudes and phases of the complex exponentials
+
+        """
+        # Compute the residues
+        B = np.zeros((self.N, self.M), dtype=self.lam.dtype)
+        for i in range(self.N):
+            for j in range(self.M):
+                B[i,j] = np.abs(self.lam[j])**i*np.exp(1.0j*i*np.angle(self.lam[j]))
+
+        r, _, _, _ = la.lstsq(B, self.X)
+
+        # Extract amplitudes and phases from residues
+        self.amps = np.abs(r)
+        self.faze = np.angle(r)
+
+        return
+
+    def ReconstructSignal(self, t):
+        """
+        Having computed the amplitudes, damping, frequencies, and phases, can
+        produce signal based on sum of series of complex exponentials
+
+        Parameters
+        ----------
+        t : numpy.ndarray
+            array of times
+
+        Returns
+        -------
+        X : numpy.ndarray
+            reconstructed signal
+        
+        """
+        X = np.zeros(t.shape)
+        for i in range(self.M):
+            a = self.amps[i]
+            x = self.damp[i]
+            w = self.freq[i]
+            p = self.faze[i]
+
+            X += a*np.exp(x*t)*np.cos(w*t + p)
+
+        return X

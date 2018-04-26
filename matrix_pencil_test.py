@@ -2,7 +2,7 @@ import numpy as np
 from scipy import linalg as la
 from matrix_pencil import *
 from matrix_pencil_der import *
-from matrix_chain import *
+import matplotlib.pyplot as plt
 
 np.set_printoptions(precision=5)
 
@@ -183,12 +183,14 @@ def TestChain():
     N = 20
     L = N/2 - 1
     M = 3
-    h = 1.0e-6
+    h = 1.0e-8
     dt = 0.1
     rho = 100
 
     # Create random Vhat matrix
-    VT = np.random.random((L+1,L+1))
+    Y = np.random.random((N-L,L+1))
+    U, s, VT = la.svd(Y)
+    #VT = np.random.random((L+1,L+1))
     Vhat = VT[:M,:]
     V1T = Vhat[:,:-1]
     V2T = Vhat[:,1:]
@@ -198,28 +200,27 @@ def TestChain():
     Siginv = np.vstack((np.diag(1.0/sbar), np.zeros((L-M,M))))
     A = VTbar.T.dot(Siginv).dot(Ubar.T).dot(V2T)
     lam, W, V = la.eig(A, left=True, right=True)
-    alphas = ExtractDamping(lam, dt)
+    alphas = np.log(lam).real/dt
 
     # Perturb the matrix and obtain eigenvalues
     VTpert = np.random.random((L+1,L+1))
     VTpos = VT + h*VTpert
     VTneg = VT - h*VTpert
 
+    #_, _, VTpos = la.svd(Ypos)
     Vhatpos = VTpos[:M,:]
     V1Tpos = Vhatpos[:,:-1]
     V2Tpos = Vhatpos[:,1:]
+    Upos, spos, VTpos = la.svd(V1Tpos)
+    Sigpos = np.vstack((np.diag(1.0/spos), np.zeros((L-M,M))))
+    Apos = VTpos.T.dot(Sigpos).dot(Upos.T).dot(V2Tpos)
 
+    #_, _, VTneg = la.svd(Yneg)
     Vhatneg = VTneg[:M,:]
     V1Tneg = Vhatneg[:,:-1]
     V2Tneg = Vhatneg[:,1:]
-
-    Upos, spos, VTpos = la.svd(V1Tpos)
     Uneg, sneg, VTneg = la.svd(V1Tneg)
-
-    Sigpos = np.vstack((np.diag(1.0/spos), np.zeros((L-M,M))))
     Signeg = np.vstack((np.diag(1.0/sneg), np.zeros((L-M,M))))
-
-    Apos = VTpos.T.dot(Sigpos).dot(Upos.T).dot(V2Tpos)
     Aneg = VTneg.T.dot(Signeg).dot(Uneg.T).dot(V2Tneg)
 
     # Compute the perturbed eigenvalues
@@ -227,8 +228,8 @@ def TestChain():
     lamneg = la.eig(Aneg, left=False, right=False)
 
     # Compute the pertubed damping from the eigenvalues
-    alphapos = ExtractDamping(lampos, dt)
-    alphaneg = ExtractDamping(lamneg, dt)
+    alphapos = np.log(lampos).real/dt
+    alphaneg = np.log(lamneg).real/dt
 
     # Compute the perturbed outputs of the KS_function
     cpos = c_ks(alphapos, rho)
@@ -248,6 +249,7 @@ def TestChain():
     dcdV2T = dAdV2Trans(dcdA, V1inv)
     dcdVhat = dV12dVhatTrans(dcdV1T, dcdV2T)
     dcdVT = dVTdVhatTrans(dcdVhat)
+    #dcdY = dVTdYTrans(dcdVT, U, s, VT)
 
     analytic = np.sum(dcdVT*VTpert)
     print "Analytic:      ", analytic
@@ -255,6 +257,51 @@ def TestChain():
     # Compute relative error
     rel_error = (analytic - approx)/approx
     print "Rel. error:    ", rel_error
+
+    return
+
+def TestFullMatrixPencilDer():
+    t = np.linspace(0.0, 1.0, 101)
+    X = np.exp(-t)*np.sin(2.0*np.pi*t) + np.sin(4.0*np.pi*t)
+    dt = 0.1
+
+    cutoff = 1.0e-10
+    pencil = MatrixPencil(X, dt, True, tol=cutoff)
+    pencil.ComputeDampingAndFrequency()
+    pencil.ComputeAmplitudeAndPhase()
+    Xre = pencil.ReconstructSignal(t)
+    plt.figure()
+    plt.plot(t, X, 'orange')
+    plt.plot(t, Xre, '--b')
+    plt.show()
+    c = pencil.AggregateDamping()
+    cder = pencil.AggregateDampingDer()
+    
+    # Perturb the intial data
+    h = 1.0e-6
+    Xpert = np.random.random(X.shape)
+    Xpos = X + h*Xpert
+    Xneg = X - h*Xpert
+
+    # Approximate the derivative using finite differences
+    pencilpos = MatrixPencil(Xpos, dt, tol=cutoff)
+    pencilpos.ComputeDampingAndFrequency()
+    cpos = pencilpos.AggregateDamping()
+
+    pencilneg = MatrixPencil(Xneg, dt, tol=cutoff)
+    pencilneg.ComputeDampingAndFrequency()
+    cneg = pencilneg.AggregateDamping()
+
+    approx = 0.5*(cpos - cneg)/h
+    print approx
+
+    # Compute analytic derivative
+    analytic = np.sum(cder*Xpert)
+    print analytic
+
+    # Compute relative error
+    rel_error = (analytic - approx)/approx
+    print rel_error
 
     return
 
@@ -279,10 +326,15 @@ if __name__ == "__main__":
     print "-------------------------"
     TestSVDDerivative()
     print
-    print "========================"
-    print "Chained derivative tests"
-    print "========================"
-    print
-    print "Testing dc/dA"
+    #print "========================"
+    #print "Chained derivative tests"
+    #print "========================"
+    #print
+    print "Testing dc/dY"
     print "-------------"
     TestChain()
+    print
+    #print "Testing dc/dX"
+    #print "-------------"
+    #TestFullMatrixPencilDer()
+
