@@ -236,10 +236,9 @@ def dAdV2Trans(dcdA, V1inv):
 
 def dV12dVhatTrans(dcdV1T, dcdV2T):
     """
-    Apply action of [d(V1^{T})/d(Vhat^{T})]^{T} to the array of derivatives
-    [d(c)/d(V1^{T})]^{T} and the action of [d(V2^{T})/d(Vhat^{T})]^{T} to the
-    array of derivatives [d(c)/d(V1^{T})]^{T} and combine to obtain the
-    derivatives d(c)/d(Vhat^{T})
+    Pad the d(c)/d(V1^{T}) derivatives  with zeros, pad the d(c)/d(V2^{T})
+    derivatives with zeros, and combine to obtain the derivatives
+    d(c)/d(Vhat^{T})
 
     Parameters
     ----------
@@ -259,3 +258,58 @@ def dV12dVhatTrans(dcdV1T, dcdV2T):
               np.hstack((np.zeros(M).reshape((M,1)), dcdV2T))
 
     return dcdVhat
+
+def dVTdVhatTrans(dcdVhat):
+    """
+    Pad d(c)/d(Vhat^{T}) derivatives with zeros to get the d(c)/d(V^{T})
+    derivatives
+
+    Parameters
+    ----------
+    dcdVhat : numpy.ndarray
+        vector of derivatives d(c)/d(Vhat^{T})
+
+    Returns
+    -------
+    numpy.ndarray
+        vector of derivatives d(c)/d(V^{T})
+
+    """
+    M = dcdVhat.shape[0]
+    Lp1 = dcdVhat.shape[1]
+
+    return np.vstack((dcdVhat, np.zeros((Lp1-M,Lp1))))
+
+def dVTdYTrans(dcdVT, U, s, VT):
+    """
+    Apply action of [d(VT)/d(Y)]^{T} to the array of derivatives
+    [d(c)/d(V^{T})]^{T} to obtain the derivatives d(c)/d(Y)
+
+    Parameters
+    ----------
+    dcdA : numpy.ndarray
+        array of derivatives d(c)/d(A)
+    V1inv : numpy.ndarray
+        generalized inverse of the tranpose of the V1hat matrix 
+
+    Returns
+    -------
+    dcdY : numpy.ndarray
+        vector of derivatives d(c)/d(Y)
+
+    """
+    m = U.shape[0]
+    n = VT.shape[1]
+
+    # Compute SVD derivatives d(V)/d(V^{T}), d(s)/d(V^{T}), and
+    # d(U^{T})/d(V^{T})
+    _, _, dVT = SVDDerivative(U, s, VT)
+
+    # Apply chain rule
+    dcdY = np.empty((m,n))
+
+    for i in range(m):
+        for j in range(n):
+            dcdY[i,j] = np.sum(dcdVT*dVT[:,:,i,j])
+
+    return dcdY

@@ -105,49 +105,62 @@ def SVDDerivative(U, s, VT):
     """
     m = U.shape[0]
     n = VT.shape[1]
-
-    assert(m <= n), "Input matrix should have dimensions m <= n. Use transpose?"
+    ns = min(m,n)
 
     # Allocate output arrays
     dU = np.zeros((m,m,m,n))
-    ds = np.zeros((m,m,n))
+    ds = np.zeros((ns,m,n))
     dVT = np.zeros((n,n,m,n))
 
     # Square matrix of singular values
     S1 = np.diag(s)
+    S1inv = np.diag(1.0/s)
+
+    # Form skew-symmetric F matrix
+    F = np.zeros((ns,ns))
+    for i in range(ns):
+        for j in range(i+1,ns):
+            F[i,j] = 1.0/(s[j]**2 - s[i]**2)
+            F[j,i] = 1.0/(s[i]**2 - s[j]**2)
 
     for k in range(m):
         for l in range(n):
             dP = np.outer(U[k,:], VT[:,l])
-            dP1 = dP[:,:m]
 
             # Extract diagonal for ds
-            ds[:,k,l] = np.diag(dP1)
+            ds[:,k,l] = np.diag(dP)
 
-            # Form skew-symmetric F matrix
-            F = np.zeros((m,m))
-            for i in range(m):
-                for j in range(i+1,m):
-                    F[i,j] = 1.0/(s[j]**2 - s[i]**2)
-                    F[j,i] = 1.0/(s[i]**2 - s[j]**2)
+            # Compute dC and dD matrices for various cases
+            if m > n:
+                dP1 = dP[:n,:]
+                dP2 = dP[n:,:]
+                
+                dC1 = F*(dP1.dot(S1) + S1.dot(dP1.T))
+                dDT = -F*(S1.dot(dP1) + dP1.T.dot(S1))
 
-            # Compute dC matrix and skew-symmetric part of the dD matrix
-            dC = F*(dP1.dot(S1) + S1.dot(dP1.T))
-            dD1 = F*(S1.dot(dP1) + dP1.T.dot(S1))
+                dC2T = dP2.dot(S1inv)
 
-            # Assemble dD matrix
-            if m < n:
-                dP2 = dP[:,m:]
-                S1inv = np.diag(1.0/s)
-                dD2 = S1inv.dot(dP2)
-
-                dDT = np.zeros((n,n))
-                dDT[:m,:m] = -dD1
-                dDT[:m,m:] = dD2
-                dDT[m:,:m] = -dD2.T
+                dC = np.zeros((m,m))
+                dC[:n,:n] = dC1
+                dC[:n,n:] = -dC2T.T
+                dC[n:,:n] = dC2T
 
             else:
-                dDT = -dD1
+                dP1 = dP[:,:m]
+                dP2 = dP[:,m:]
+
+                dC = F*(dP1.dot(S1) + S1.dot(dP1.T))
+                dD1 = F*(S1.dot(dP1) + dP1.T.dot(S1))
+
+                dD2 = S1inv.dot(dP2)
+
+                if m == n:
+                    dDT = -dD1
+                else:
+                    dDT = np.zeros((n,n))
+                    dDT[:m,:m] = -dD1
+                    dDT[:m,m:] = dD2
+                    dDT[m:,:m] = -dD2.T
 
             # Compute dU and dVT sensitivities from dC and dD
             dU[:,:,k,l] = U.dot(dC)

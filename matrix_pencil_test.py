@@ -117,7 +117,7 @@ def TestDlamDA():
 def TestSVDDerivative():
     # Create random rectangular matrix
     m = 4
-    n = 4
+    n = 2
     ns = min(m,n) # number of singular values
     A = np.random.random((m,n))
     U, s, VT = la.svd(A)
@@ -180,40 +180,44 @@ def TestChain():
     """
     Test derivative of output of KS function w.r.t. something
     """
-    m = 9
-    n = 11
+    N = 20
+    L = N/2 - 1
+    M = 3
     h = 1.0e-6
     dt = 0.1
     rho = 100
 
     # Create random Vhat matrix
-    Vhat = np.random.random((m,n+1))
+    VT = np.random.random((L+1,L+1))
+    Vhat = VT[:M,:]
     V1T = Vhat[:,:-1]
     V2T = Vhat[:,1:]
     Ubar, sbar, VTbar = la.svd(V1T)
 
     # Create random matrix for eigenvalue problem and obtain damping
-    Siginv = np.vstack((np.diag(1.0/sbar), np.zeros((n-m,m))))
+    Siginv = np.vstack((np.diag(1.0/sbar), np.zeros((L-M,M))))
     A = VTbar.T.dot(Siginv).dot(Ubar.T).dot(V2T)
     lam, W, V = la.eig(A, left=True, right=True)
     alphas = ExtractDamping(lam, dt)
 
     # Perturb the matrix and obtain eigenvalues
-    Vhatpert = np.random.random((m,n+1))
-    Vhatpos = Vhat + h*Vhatpert
-    Vhatneg = Vhat - h*Vhatpert
+    VTpert = np.random.random((L+1,L+1))
+    VTpos = VT + h*VTpert
+    VTneg = VT - h*VTpert
 
+    Vhatpos = VTpos[:M,:]
     V1Tpos = Vhatpos[:,:-1]
     V2Tpos = Vhatpos[:,1:]
 
+    Vhatneg = VTneg[:M,:]
     V1Tneg = Vhatneg[:,:-1]
     V2Tneg = Vhatneg[:,1:]
 
     Upos, spos, VTpos = la.svd(V1Tpos)
     Uneg, sneg, VTneg = la.svd(V1Tneg)
 
-    Sigpos = np.vstack((np.diag(1.0/spos), np.zeros((n-m,m))))
-    Signeg = np.vstack((np.diag(1.0/sneg), np.zeros((n-m,m))))
+    Sigpos = np.vstack((np.diag(1.0/spos), np.zeros((L-M,M))))
+    Signeg = np.vstack((np.diag(1.0/sneg), np.zeros((L-M,M))))
 
     Apos = VTpos.T.dot(Sigpos).dot(Upos.T).dot(V2Tpos)
     Aneg = VTneg.T.dot(Signeg).dot(Uneg.T).dot(V2Tneg)
@@ -243,8 +247,9 @@ def TestChain():
     dcdV1T = dAdV1Trans(dcdA, Ubar, sbar, VTbar, V2T)
     dcdV2T = dAdV2Trans(dcdA, V1inv)
     dcdVhat = dV12dVhatTrans(dcdV1T, dcdV2T)
+    dcdVT = dVTdVhatTrans(dcdVhat)
 
-    analytic = np.sum(dcdVhat*Vhatpert)
+    analytic = np.sum(dcdVT*VTpert)
     print "Analytic:      ", analytic
 
     # Compute relative error
