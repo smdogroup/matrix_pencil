@@ -183,6 +183,44 @@ def SVDDerivative(U, s, VT):
 
     return dU, ds, dVT
 
+def PseudoinverseDerivative(A, Ainv):
+    """
+    Derivatives of pseudoinverse with respect to its generating matrix
+
+    Parameters
+    ----------
+    A : numpy.ndarray
+        input matrix
+    Ainv : numpy.ndarray
+        Pseudoinverse of A matrix
+
+    Returns
+    -------
+    dAinv : numpy.ndarray
+        derivatives dAinv[i,j]/dA[k,l]
+
+    """
+    m = A.shape[0]
+    n = A.shape[1]
+
+    # Allocate array for output
+    dAinv = np.zeros((n,m,m,n))
+
+    for k in range(m):
+        for l in range(n):
+            ek = np.zeros(m)
+            ek[k] += 1.0
+            el = np.zeros(n)
+            el[l] += 1.0
+
+            dA = np.outer(ek, el)
+
+            dAinv[:,:,k,l] = -Ainv.dot(dA).dot(Ainv) + \
+                Ainv.dot(Ainv.T).dot(dA.T).dot(np.eye(m) - A.dot(Ainv)) + \
+                (np.eye(n) - Ainv.dot(A)).dot(dA.T).dot(Ainv.T).dot(Ainv)
+
+    return dAinv
+
 def DalphaDlamTrans(dcda, lam, dt):
     """
     Apply action of [d(alpha)/d(lam)]^{T} to the vector of derivatives

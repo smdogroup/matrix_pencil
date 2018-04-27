@@ -173,12 +173,58 @@ def TestSVDDerivative():
     print VTanalytic
     print "Rel. error, VT:" 
     print VT_rel_error
+    print
 
     return
 
+def TestPseudoinverseDer():
+    """
+    Test derivative of pseudoinverse w.r.t. original matrix
+
+    """
+    m = 3
+    n = 5
+
+    A = np.random.random((m,n))
+    _, _, VT = la.svd(A)
+    A = VT
+    Ainv = la.pinv(A)
+
+    dAinv = PseudoinverseDerivative(A, Ainv)
+    
+    # Approximate by finite differences
+    h = 1.0e-6
+    Apert = np.random.random(A.shape)
+
+    Apos = A + h*Apert
+    Aneg = A - h*Apert
+
+    Aposinv = la.pinv(Apos)
+    Aneginv = la.pinv(Aneg)
+
+    approx = 0.5*(Aposinv - Aneginv)/h
+    print "Approx., Ainv: " 
+    print approx
+
+    # Obtain analytic derivative
+    analytic = np.zeros(Ainv.shape)
+    for i in range(n):
+        for j in range(m):
+            analytic[i,j] = np.sum(dAinv[i,j,:,:]*Apert)
+    print "Analytic, Ainv:" 
+    print analytic
+
+    # Compute relative error
+    rel_error = (analytic - approx)/approx
+    print "Error, Ainv:   " 
+    print rel_error
+
+    return
+    
 def TestChain():
     """
     Test derivative of output of KS function w.r.t. something
+
     """
     N = 20
     L = N/2 - 1
@@ -322,18 +368,22 @@ if __name__ == "__main__":
     #print "----------------------------------------"
     #TestDlamDA()
     #print
-    print "Testing derivative of SVD"
-    print "-------------------------"
-    TestSVDDerivative()
+    #print "Testing derivative of SVD"
+    #print "-------------------------"
+    #TestSVDDerivative()
+    #print
+    print "Testing derivative of Pseudoinverse"
+    print "-----------------------------------"
+    TestPseudoinverseDer()
     print
     #print "========================"
     #print "Chained derivative tests"
     #print "========================"
     #print
-    print "Testing dc/dY"
-    print "-------------"
-    TestChain()
-    print
+    #print "Testing dc/dY"
+    #print "-------------"
+    #TestChain()
+    #print
     #print "Testing dc/dX"
     #print "-------------"
     #TestFullMatrixPencilDer()
