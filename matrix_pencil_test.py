@@ -241,8 +241,9 @@ def TestChain():
         for j in range(L+1):
             Y[i,j] = X[i+j]
 
+    Y = np.random.random((N-L,L+1))
+    
     U, s, VT = la.svd(Y)
-    print s
     Vhat = VT[:M,:]
     V1T = Vhat[:,:-1]
     V2T = Vhat[:,1:]
@@ -284,7 +285,6 @@ def TestChain():
 
     # Compute the finite difference approximation to the derivative
     approx = 0.5*(cpos - cneg)/h
-    print "Approximation: ", approx
 
     # Compute the analytic derivative
     dcda = DcDalpha(alphas, rho)
@@ -293,13 +293,14 @@ def TestChain():
     dcdV1T = dAdV1Trans(dcdA, V1T, V1inv, V2T)
     dcdV2T = dAdV2Trans(dcdA, V1inv)
     dcdVhat = dV12dVhatTrans(dcdV1T, dcdV2T)
-    dcdY = dVhatdYTrans(dcdVhat, U, s[:M], VT)
+    dcdY = dVhatdYTrans(dcdVhat, U, s, VT)
 
     analytic = np.sum(dcdY*Ypert)
-    print "Analytic:      ", analytic
 
     # Compute relative error
     rel_error = (analytic - approx)/approx
+    print "Approximation: ", approx
+    print "Analytic:      ", analytic
     print "Rel. error:    ", rel_error
 
     return
@@ -309,8 +310,7 @@ def TestFullMatrixPencilDer():
     X = np.exp(-t)*np.sin(2.0*np.pi*t) + np.exp(0.5*t)*np.sin(2.0*np.pi*t)
     dt = t[1] - t[0]
 
-    cutoff = 1.0e-5
-    pencil = MatrixPencil(X, dt, True, tol=cutoff)
+    pencil = MatrixPencil(X, dt, True)
     pencil.ComputeDampingAndFrequency()
     pencil.ComputeAmplitudeAndPhase()
     Xre = pencil.ReconstructSignal(t)
@@ -329,24 +329,24 @@ def TestFullMatrixPencilDer():
     Xneg = X - h*Xpert
 
     # Approximate the derivative using finite differences
-    pencilpos = MatrixPencil(Xpos, dt, tol=cutoff)
+    pencilpos = MatrixPencil(Xpos, dt)
     pencilpos.ComputeDampingAndFrequency()
     cpos = pencilpos.AggregateDamping()
 
-    pencilneg = MatrixPencil(Xneg, dt, tol=cutoff)
+    pencilneg = MatrixPencil(Xneg, dt)
     pencilneg.ComputeDampingAndFrequency()
     cneg = pencilneg.AggregateDamping()
 
     approx = 0.5*(cpos - cneg)/h
-    print approx
+    print "Approximation: ", approx
 
     # Compute analytic derivative
     analytic = np.sum(cder*Xpert)
-    print analytic
+    print "Analytic:      ", analytic
 
     # Compute relative error
     rel_error = (analytic - approx)/approx
-    print rel_error
+    print "Rel. error:    ", rel_error
 
     return
 
@@ -375,14 +375,14 @@ if __name__ == "__main__":
     #print "-----------------------------------"
     #TestPseudoinverseDer()
     #print
-    #print "========================"
-    #print "Chained derivative tests"
-    #print "========================"
-    #print
-    #print "Testing dc/dY"
-    #print "-------------"
-    #TestChain()
-    #print
+    print "========================"
+    print "Chained derivative tests"
+    print "========================"
+    print
+    print "Testing dc/dY"
+    print "-------------"
+    TestChain()
+    print
     print "Testing dc/dX"
     print "-------------"
     TestFullMatrixPencilDer()

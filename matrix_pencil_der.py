@@ -389,7 +389,7 @@ def dVhatdYTrans(dcdVhat, U, s, VT):
     U : numpy.ndarray
         left singular vectors
     s : numpy.ndarray
-        truncated singular values
+        singular values
     VT : numpy.ndarray
         right singular vectors
 
@@ -406,37 +406,47 @@ def dVhatdYTrans(dcdVhat, U, s, VT):
     """
     m = U.shape[0]
     n = VT.shape[1]
-    ns = len(s)
+    M = dcdVhat.shape[0]
 
-    # Square matrix of singular values
-    S1 = np.diag(s)
-    S1inv = np.diag(1.0/s)
+    dVhat = np.zeros((M,n,m,n))
 
-    # Form skew-symmetric F matrix
-    F = np.zeros((ns,ns))
-    for i in range(ns):
-        for j in range(i+1,ns):
-            F[i,j] = 1.0/(s[j]**2 - s[i]**2)
-            F[j,i] = 1.0/(s[i]**2 - s[j]**2)
+    # If Y is full-rank, then use the standard SVD derivative
+    if (all(s[M:] > 1e-6)):
+        print "Computing exact SVD derivative..."
+        _, _, dVT = SVDDerivative(U, s, VT)
+        dVhat = dVT[:M,:,:,:]
 
-    # Modified version of SVD derivative to approximate d(Vhat^{T})/dY)
-    dVhat = np.zeros((ns,n,m,n))
+    # If Y is numerically low-rank, then approximate the derivative
+    else:
+        print "Computing approximate SVD derivative..."
+        ns = max(M, len(s[s > 1e-6]))
 
-    for k in range(m):
-        for l in range(n):
-            dP = np.outer(U[k,:], VT[:,l])
+        # Square matrix of singular values
+        S1 = np.diag(s[:ns])
+        S1inv = np.diag(1.0/s[:ns])
 
-            dP1 = dP[:ns,:ns]
-            dD1 = F*(S1.dot(dP1) + dP1.T.dot(S1))
+        # Form skew-symmetric F matrix
+        F = np.zeros((ns,ns))
+        for i in range(ns):
+            for j in range(i+1,ns):
+                F[i,j] = 1.0/(s[j]**2 - s[i]**2)
+                F[j,i] = 1.0/(s[i]**2 - s[j]**2)
 
-            dP2 = dP[:ns,ns:]
-            dD2 = S1inv.dot(dP2)
+        for k in range(m):
+            for l in range(n):
+                dP = np.outer(U[k,:], VT[:,l])
 
-            dDT = np.zeros((ns,n))
-            dDT[:,:ns] = -dD1
-            dDT[:,ns:] = dD2
+                dP1 = dP[:ns,:ns]
+                dD1 = F*(S1.dot(dP1) + dP1.T.dot(S1))
 
-            dVhat[:,:,k,l] = dDT.dot(VT)
+                dP2 = dP[:ns,ns:]
+                dD2 = S1inv.dot(dP2)
+
+                dDT = np.zeros((ns,n))
+                dDT[:,:ns] = -dD1
+                dDT[:,ns:] = dD2
+
+                dVhat[:,:,k,l] = dDT[:M,:].dot(VT)
 
     # Apply chain rule to get 
     dcdY = np.empty((m,n))

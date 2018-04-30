@@ -37,7 +37,7 @@ T = np.linspace(ts[0], ts[-1], N)
 X = np.interp(T, ts, hs)
 DT = T[1] - T[0]
 
-pencil = MatrixPencil(X, DT)
+pencil = MatrixPencil(X, DT, True)
 pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
 
@@ -65,7 +65,7 @@ T = np.linspace(ts[0], ts[-1], N)
 X = np.interp(T, ts, alphas)
 DT = T[1] - T[0]
 
-pencil = MatrixPencil(X, DT)
+pencil = MatrixPencil(X, DT, True)
 pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
 

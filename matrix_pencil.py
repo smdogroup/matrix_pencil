@@ -1,10 +1,11 @@
 import numpy as np
-from scipy import linalg as la
+import scipy.linalg as la
+import scipy.signal as sig
 import matplotlib.pyplot as plt
 from matrix_pencil_der import *
 
 class MatrixPencil(object):
-    def __init__(self, X, dt, output=False, rho=100, tol = 1.0e-5):
+    def __init__(self, X, dt, output=False, rho=100):
         """
         Provide the capability to:
         1) decompose input signal into a series of complex exponentials by the
@@ -23,14 +24,12 @@ class MatrixPencil(object):
             choose whether or not to provide information
         rho : float
             KS parameter
-        tol : cutoff for singular values used in model order estimation
 
         """
         self.X = X
         self.dt = dt
         self.output = output
         self.rho = rho
-        self.tol = tol
 
         # Set the pencil parameter L
         self.N = X.shape[0]
@@ -118,31 +117,28 @@ class MatrixPencil(object):
         robustness
 
         """
-        # Cut off singular values below a certain tolerance to ensure that the
-        # assumptions made in approximating the derivative are valid
-        atol = 1.0e-6
-        s_red = self.s[self.s > atol]
+        tol = 1.0e-6
+        n_above_tol = len(self.s[self.s > tol])
 
-        # Normalize singular values of Hankel matrix by maximum
-        snorm = s_red/s_red.max()
+        w = [-1.0, 1.0]
+        diff = sig.convolve(self.s, w, 'valid')
+        diffdiff = sig.convolve(diff, w, 'valid')
 
-        # Attempt to determine where the normalized singular values "bottom out"
-        sdiff = snorm[:-1] - snorm[1:]
-        bottom_out_ind = np.argmax(sdiff[np.logical_and(sdiff < self.tol, sdiff > 0.0)])
+        tol = 1.0e-3
+        n_bottom_out = 2 + len(diffdiff[diffdiff > tol])
 
-        self.M = len(s_red)
-        
+        self.M = min(min(n_above_tol, n_bottom_out), self.L)
+
         if self.output:
             print "Model order, M = ", self.M
             plt.figure(figsize=(8, 6))
-            plt.scatter(bottom_out_ind, snorm[bottom_out_ind], s=30, c='r')
-            plt.semilogy(np.arange(self.L+1), snorm)
-            plt.title('Normalized singular values', fontsize=16)
+            plt.scatter(self.M-1, self.s[self.M-1], s=30, c='r')
+            plt.semilogy(np.arange(len(self.s)), self.s)
+            plt.title('Singular values', fontsize=16)
 
             plt.figure(figsize=(8, 6))
-            plt.semilogy(np.arange(self.L), sdiff)
-            plt.title('Difference between adjacent singular values', fontsize=16)
-            plt.show()
+            plt.plot(np.arange(len(diffdiff)), diffdiff)
+            plt.title('Approx. 2nd Derivative of Singular Values', fontsize=16)
 
         return
 
@@ -173,7 +169,7 @@ class MatrixPencil(object):
         dcdV1T = dAdV1Trans(dcdA, self.V1T, self.V1inv, self.V2T)
         dcdV2T = dAdV2Trans(dcdA, self.V1inv)
         dcdVhat = dV12dVhatTrans(dcdV1T, dcdV2T)
-        dcdY = dVhatdYTrans(dcdVhat, self.U, self.s[:self.M], self.VT)
+        dcdY = dVhatdYTrans(dcdVhat, self.U, self.s, self.VT)
         dcdX = dYdXTrans(dcdY)
 
         return dcdX
