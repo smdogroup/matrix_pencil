@@ -226,48 +226,49 @@ def TestChain():
     Test derivative of output of KS function w.r.t. something
 
     """
-    N = 20
+    N = 50
     L = N/2 - 1
-    M = 3
+    M = 4
     h = 1.0e-8
     dt = 0.1
     rho = 100
 
-    # Create random Vhat matrix
-    Y = np.random.random((N-L,L+1))
+    # Create random Y matrix and obtain damping
+    t = np.linspace(0.0, 4.0, N)
+    X = np.exp(-t)*np.sin(2.0*np.pi*t) + np.sin(2.0*np.pi*t)
+    Y = np.empty((N-L, L+1), dtype=X.dtype)
+    for i in range(N-L):
+        for j in range(L+1):
+            Y[i,j] = X[i+j]
+
     U, s, VT = la.svd(Y)
-    #VT = np.random.random((L+1,L+1))
+    print s
     Vhat = VT[:M,:]
     V1T = Vhat[:,:-1]
     V2T = Vhat[:,1:]
-    Ubar, sbar, VTbar = la.svd(V1T)
-
-    # Create random matrix for eigenvalue problem and obtain damping
-    Siginv = np.vstack((np.diag(1.0/sbar), np.zeros((L-M,M))))
-    A = VTbar.T.dot(Siginv).dot(Ubar.T).dot(V2T)
+    V1inv = la.pinv(V1T)
+    A = V1inv.dot(V2T)
     lam, W, V = la.eig(A, left=True, right=True)
     alphas = np.log(lam).real/dt
 
     # Perturb the matrix and obtain eigenvalues
-    VTpert = np.random.random((L+1,L+1))
-    VTpos = VT + h*VTpert
-    VTneg = VT - h*VTpert
+    Ypert = np.random.random((N-L,L+1))
+    Ypos = Y + h*Ypert
+    Yneg = Y - h*Ypert
 
-    #_, _, VTpos = la.svd(Ypos)
+    _, _, VTpos = la.svd(Ypos)
     Vhatpos = VTpos[:M,:]
     V1Tpos = Vhatpos[:,:-1]
     V2Tpos = Vhatpos[:,1:]
-    Upos, spos, VTpos = la.svd(V1Tpos)
-    Sigpos = np.vstack((np.diag(1.0/spos), np.zeros((L-M,M))))
-    Apos = VTpos.T.dot(Sigpos).dot(Upos.T).dot(V2Tpos)
+    V1invpos = la.pinv(V1Tpos)
+    Apos = V1invpos.dot(V2Tpos)
 
-    #_, _, VTneg = la.svd(Yneg)
+    _, _, VTneg = la.svd(Yneg)
     Vhatneg = VTneg[:M,:]
     V1Tneg = Vhatneg[:,:-1]
     V2Tneg = Vhatneg[:,1:]
-    Uneg, sneg, VTneg = la.svd(V1Tneg)
-    Signeg = np.vstack((np.diag(1.0/sneg), np.zeros((L-M,M))))
-    Aneg = VTneg.T.dot(Signeg).dot(Uneg.T).dot(V2Tneg)
+    V1invneg = la.pinv(V1Tneg)
+    Aneg = V1invneg.dot(V2Tneg)
 
     # Compute the perturbed eigenvalues
     lampos = la.eig(Apos, left=False, right=False)
@@ -286,18 +287,15 @@ def TestChain():
     print "Approximation: ", approx
 
     # Compute the analytic derivative
-    V1inv = VTbar.T.dot(Siginv).dot(Ubar.T)
-
     dcda = DcDalpha(alphas, rho)
     dcdl = DalphaDlamTrans(dcda, lam, dt)
     dcdA = DlamDATrans(dcdl, W, V)
-    dcdV1T = dAdV1Trans(dcdA, Ubar, sbar, VTbar, V2T)
+    dcdV1T = dAdV1Trans(dcdA, V1T, V1inv, V2T)
     dcdV2T = dAdV2Trans(dcdA, V1inv)
     dcdVhat = dV12dVhatTrans(dcdV1T, dcdV2T)
-    dcdVT = dVTdVhatTrans(dcdVhat)
-    #dcdY = dVTdYTrans(dcdVT, U, s, VT)
+    dcdY = dVhatdYTrans(dcdVhat, U, s[:M], VT)
 
-    analytic = np.sum(dcdVT*VTpert)
+    analytic = np.sum(dcdY*Ypert)
     print "Analytic:      ", analytic
 
     # Compute relative error
@@ -307,11 +305,11 @@ def TestChain():
     return
 
 def TestFullMatrixPencilDer():
-    t = np.linspace(0.0, 1.0, 101)
-    X = np.exp(-t)*np.sin(2.0*np.pi*t) + np.sin(4.0*np.pi*t)
-    dt = 0.1
+    t = np.linspace(0.0, 10.0, 201)
+    X = np.exp(-t)*np.sin(2.0*np.pi*t) + np.exp(0.5*t)*np.sin(2.0*np.pi*t)
+    dt = t[1] - t[0]
 
-    cutoff = 1.0e-10
+    cutoff = 1.0e-5
     pencil = MatrixPencil(X, dt, True, tol=cutoff)
     pencil.ComputeDampingAndFrequency()
     pencil.ComputeAmplitudeAndPhase()
@@ -324,8 +322,9 @@ def TestFullMatrixPencilDer():
     cder = pencil.AggregateDampingDer()
     
     # Perturb the intial data
-    h = 1.0e-6
+    h = 1.0e-8
     Xpert = np.random.random(X.shape)
+    #Xpert = np.ones(X.shape)
     Xpos = X + h*Xpert
     Xneg = X - h*Xpert
 
@@ -372,10 +371,10 @@ if __name__ == "__main__":
     #print "-------------------------"
     #TestSVDDerivative()
     #print
-    print "Testing derivative of Pseudoinverse"
-    print "-----------------------------------"
-    TestPseudoinverseDer()
-    print
+    #print "Testing derivative of Pseudoinverse"
+    #print "-----------------------------------"
+    #TestPseudoinverseDer()
+    #print
     #print "========================"
     #print "Chained derivative tests"
     #print "========================"
@@ -384,7 +383,6 @@ if __name__ == "__main__":
     #print "-------------"
     #TestChain()
     #print
-    #print "Testing dc/dX"
-    #print "-------------"
-    #TestFullMatrixPencilDer()
-
+    print "Testing dc/dX"
+    print "-------------"
+    TestFullMatrixPencilDer()

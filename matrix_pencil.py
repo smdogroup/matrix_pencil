@@ -49,10 +49,8 @@ class MatrixPencil(object):
         self.s = None
         self.VT = None
 
-        # Save SVD and generalized inverse of filtered right singular vectors V1
-        self.Ubar = None
-        self.sbar = None
-        self.VTbar = None
+        # Save the filtered right singular vectors V1 and the pseudoinverse
+        self.V1T = None
         self.V1inv = None
 
         # Save right singular vectors V2
@@ -90,14 +88,11 @@ class MatrixPencil(object):
 
         # Filter the right singular vectors of the Hankel matrix based on M
         Vhat = self.VT[:self.M,:]
-        V1T = Vhat[:,:-1]
+        self.V1T = Vhat[:,:-1]
         self.V2T = Vhat[:,1:]
 
-        # Compute the SVD of V1hat in order to form generalized inverse
-        self.Ubar, self.sbar, self.VTbar = la.svd(V1T)
-        Siginv = np.vstack((np.diag(1.0/self.sbar), 
-                            np.zeros((self.L-self.M, self.M))))
-        self.V1inv = self.VTbar.T.dot(Siginv).dot(self.Ubar.T)
+        # Compute the pseudoinverse of V1T
+        self.V1inv = la.pinv(self.V1T)
 
         # Form A matrix from V1T and V2T to reduce to eigenvalue problem
         A = self.V1inv.dot(self.V2T)
@@ -123,16 +118,19 @@ class MatrixPencil(object):
         robustness
 
         """
-        # Normalize singular values of Hankel matrix by maximum
-        snorm = self.s/self.s.max()
+        # Cut off singular values below a certain tolerance to ensure that the
+        # assumptions made in approximating the derivative are valid
+        atol = 1.0e-6
+        s_red = self.s[self.s > atol]
 
-        # Attempt to determine where singular values "bottom out" using the point
-        # where the difference between adjacent singular values dips below some
-        # tolerance
+        # Normalize singular values of Hankel matrix by maximum
+        snorm = s_red/s_red.max()
+
+        # Attempt to determine where the normalized singular values "bottom out"
         sdiff = snorm[:-1] - snorm[1:]
         bottom_out_ind = np.argmax(sdiff[np.logical_and(sdiff < self.tol, sdiff > 0.0)])
 
-        self.M = min(self.L-1, bottom_out_ind+1)
+        self.M = len(s_red)
         
         if self.output:
             print "Model order, M = ", self.M
@@ -172,11 +170,10 @@ class MatrixPencil(object):
         dcda = DcDalpha(self.damp, self.rho)
         dcdl = DalphaDlamTrans(dcda, self.lam, self.dt)
         dcdA = DlamDATrans(dcdl, self.W, self.V)
-        dcdV1T = dAdV1Trans(dcdA, self.Ubar, self.sbar, self.VTbar, self.V2T)
+        dcdV1T = dAdV1Trans(dcdA, self.V1T, self.V1inv, self.V2T)
         dcdV2T = dAdV2Trans(dcdA, self.V1inv)
         dcdVhat = dV12dVhatTrans(dcdV1T, dcdV2T)
-        dcdVT = dVTdVhatTrans(dcdVhat)
-        dcdY = dVTdYTrans(dcdVT, self.U, self.s, self.VT)
+        dcdY = dVhatdYTrans(dcdVhat, self.U, self.s[:self.M], self.VT)
         dcdX = dYdXTrans(dcdY)
 
         return dcdX

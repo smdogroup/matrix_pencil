@@ -36,15 +36,16 @@ T = np.linspace(t[0], t[-1], N)
 X = np.interp(T, t, y[0,:])
 DT = T[1] - T[0]
 
-R, S = pencil(N, X, DT)
-print S
-print R
+pencil = MatrixPencil(X, DT, True)
+pencil.ComputeDampingAndFrequency()
+pencil.ComputeAmplitudeAndPhase()
 
-print S[np.argmax(R.real)]
+print pencil.damp[np.argmax(pencil.amps)]
+print pencil.AggregateDamping()
 
 # Plot response
 t_recon = np.linspace(t[0], t[-1], 1000)
-x_recon = reconstruct_signal(t_recon, R, S)
+x_recon = pencil.ReconstructSignal(t_recon)
 smd = plt.figure(figsize=(8, 6))
 plt.plot(T, X, label='original')
 plt.plot(t_recon, x_recon, 'b--', label='reconstructed')
