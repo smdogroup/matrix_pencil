@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matrix_pencil_der import *
 
 class MatrixPencil(object):
-    def __init__(self, X, dt, output=False, rho=100):
+    def __init__(self, t, x, N=-1, output_level=0, rho=100):
         """
         Provide the capability to:
         1) decompose input signal into a series of complex exponentials by the
@@ -16,31 +16,48 @@ class MatrixPencil(object):
 
         Parameters
         ----------
-        X : numpy.ndarray
+        t : numpy.ndarray
+            time array (must be evenly spaced)
+        x : numpy.ndarray
             array containing sampled waveform
-        dt : float
-            sample interval
-        output : bool
-            choose whether or not to provide information
+        N : int
+            number of samples to downsample to (optional)
+        output_level : bool
+            choose different output levels (optional)
         rho : float
-            KS parameter
+            KS parameter (default=100)
 
         """
-        self.X = X
-        self.dt = dt
-        self.output = output
+        self.output_level = "{0:02b}".format(output_level)
         self.rho = rho
 
+        if self.output_level == 1:
+            print "Intializing matrix pencil method..."
+
+        # Downsample the data and save the linear interpolation matrix
+
+        if N == -1:
+            self.X = x
+            self.N = self.X.shape[0]
+            self.dt = t[1] - t[0]
+            self.H = np.eye(self.N)
+        else:
+            T = np.linspace(t[0], t[-1], N)
+            self.H = self.GenerateLinearInterpMat(T, t, x)
+            self.X = self.H.dot(x)
+            self.N = self.X.shape[0]
+            self.dt = T[1] - T[0]
+            print la.norm(self.X)
+
         # Set the pencil parameter L
-        self.N = X.shape[0]
+        self.n = self.X.shape[0]
         self.L = self.N/2 - 1
 
-        if self.output:
-            print "Initializing Matrix Pencil method..."
+        if self.output_level[-1] == "1":
             print "Number of samples, N = ", self.N
             print "Pencil parameter, L = ", self.L
 
-        # Store model order
+        # Save model order
         self.M = None
 
         # Save SVD of Hankel matrix
@@ -66,7 +83,30 @@ class MatrixPencil(object):
         self.freq = None
         self.faze = None
 
-        # Save input KS parameter
+    def GenerateLinearInterpMat(self, T, t, x):
+        """
+        Generate matrix that linearly interpolates the data (t, x) and returns X
+        corresponding to T
+
+        """
+        N = T.shape[0]
+        n = t.shape[0]
+
+        H = np.zeros((N, n))
+
+        if self.output_level[-1] == "1":
+            print "Downsampling from {0} to {1} points...".format(n, N)
+
+        for i in range(N):
+            # Evaluate first and last basis functions
+            j0 = np.sum(T[i] >= t[:-1]) - 1
+            j1 = n - np.sum(T[i] <= t[1:])
+            dt = t[j1] - t[j0]
+            
+            H[i,j0] += (t[j1] - T[i])/dt
+            H[i,j1] += (T[i] - t[j0])/dt
+
+        return H
 
     def ComputeDampingAndFrequency(self):
         """
@@ -129,8 +169,10 @@ class MatrixPencil(object):
 
         self.M = min(min(n_above_tol, n_bottom_out), self.L)
 
-        if self.output:
+        if self.output_level[-1] == "1":
             print "Model order, M = ", self.M
+        
+        if self.output_level[-2] == "1":
             plt.figure(figsize=(8, 6))
             plt.scatter(self.M-1, self.s[self.M-1], s=30, c='r')
             plt.semilogy(np.arange(len(self.s)), self.s)
@@ -139,6 +181,7 @@ class MatrixPencil(object):
             plt.figure(figsize=(8, 6))
             plt.plot(np.arange(len(diffdiff)), diffdiff)
             plt.title('Approx. 2nd Derivative of Singular Values', fontsize=16)
+            plt.show()
 
         return
 
@@ -171,8 +214,9 @@ class MatrixPencil(object):
         dcdVhat = dV12dVhatTrans(dcdV1T, dcdV2T)
         dcdY = dVhatdYTrans(dcdVhat, self.U, self.s, self.VT)
         dcdX = dYdXTrans(dcdY)
+        dcdx = self.H.T.dot(dcdX)
 
-        return dcdX
+        return dcdx
 
     def ComputeAmplitudeAndPhase(self):
         """

@@ -37,26 +37,20 @@ while t_step < t_bound:
     y = np.hstack((y, integrator.y.reshape((2, 1))))
 
 # Decompose signal using matrix pencil method
-n = len(t)
-print "n = ", n
-N = 200
-print "N = ", N
-T = np.linspace(0.0, t[-1], N)
-X = np.interp(T, t, y[0,:])
-DT = T[1] - T[0]
-
-pencil = MatrixPencil(X, DT, True)
+N = 250
+output_level = 3
+pencil = MatrixPencil(t, y[0,:], N, output_level)
 pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
 
-print pencil.damp[np.argmax(pencil.amps)]
-print pencil.AggregateDamping()
+print "damping for largest mode = ", pencil.damp[np.argmax(pencil.amps)]
+print "ks = ", pencil.AggregateDamping()
 
 # Plot response
 t_recon = np.linspace(t[0], t[-1], 1000)
 x_recon = pencil.ReconstructSignal(t_recon)
 plt.figure(figsize=(8, 6))
-plt.plot(T, X, 'orange', label='original')
+plt.plot(t, y[0,:], 'orange', label='original')
 plt.plot(t_recon, x_recon, 'b--', label='reconstructed')
 plt.xlabel(r'$t$', fontsize=16)
 plt.ylabel(r'$x$', fontsize=16)

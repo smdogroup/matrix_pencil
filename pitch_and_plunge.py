@@ -26,29 +26,25 @@ plt.plot(ts, alphas, ts, hs)
 
 # Decompose plunge signal using matrix pencil method
 print "For plunge:"
+print
 after_forcing_period = ts > 0.0
 ts = ts[after_forcing_period]
 hs = hs[after_forcing_period]
-n = len(ts)
-print "n = ", n
 N = 150
-print "N = ", N
-T = np.linspace(ts[0], ts[-1], N)
-X = np.interp(T, ts, hs)
-DT = T[1] - T[0]
 
-pencil = MatrixPencil(X, DT, True)
+pencil = MatrixPencil(ts, hs, N, True)
 pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
 
-print pencil.damp[np.argmax(pencil.amps)]
-print pencil.AggregateDamping()
+print "damping for largest mode = ", pencil.damp[np.argmax(pencil.amps)]
+print "ks = ", pencil.AggregateDamping()
+print
 
 # Plot plunge response
 t_recon = np.linspace(ts[0], ts[-1], 1000)
 x_recon = pencil.ReconstructSignal(t_recon)
 plt.figure(figsize=(8, 6))
-plt.plot(T, X, label='original')
+plt.plot(ts, hs, label='original')
 plt.plot(t_recon, x_recon, 'b--', label='reconstructed')
 plt.xlabel(r'$t$', fontsize=16)
 plt.ylabel(r'$x$', fontsize=16)
@@ -56,27 +52,46 @@ plt.legend()
 
 # Decompose pitch signal using matrix pencil method
 print "For pitch:"
+print
 alphas = alphas[after_forcing_period]
-n = len(ts)
-print "n = ", n
-N = 150
-print "N = ", N
-T = np.linspace(ts[0], ts[-1], N)
-X = np.interp(T, ts, alphas)
-DT = T[1] - T[0]
 
-pencil = MatrixPencil(X, DT, True)
+pencil = MatrixPencil(ts, alphas, N, output_level=1)
 pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
 
-print pencil.damp[np.argmax(pencil.amps)]
-print pencil.AggregateDamping()
+print "damping for largest mode = ", pencil.damp[np.argmax(pencil.amps)]
+print "ks = ", pencil.AggregateDamping()
+
+h = 1.0e-8
+alphapert = np.random.random(alphas.shape)
+alphapos = alphas + h*alphapert
+alphaneg = alphas - h*alphapert
+
+pencilpos = MatrixPencil(ts, alphapos, N)
+pencilpos.ComputeDampingAndFrequency()
+cpos = pencilpos.AggregateDamping()
+
+pencilneg = MatrixPencil(ts, alphaneg, N)
+pencilneg.ComputeDampingAndFrequency()
+cneg = pencilneg.AggregateDamping()
+
+approx = 0.5*(cpos - cneg)/h
+
+# Compute analytic derivative
+cder = pencil.AggregateDampingDer()
+analytic = np.sum(cder*alphapert)
+
+# Compute relative error
+rel_error = (analytic - approx)/approx
+print "Approximation: ", approx
+print "Analytic:      ", analytic
+print "Rel. error:    ", rel_error
 
 # Plot plunge response
 t_recon = np.linspace(ts[0], ts[-1], 1000)
 x_recon = pencil.ReconstructSignal(t_recon)
 plt.figure(figsize=(8, 6))
-plt.plot(T, X, label='original')
+plt.plot(ts, alphas, label='original')
 plt.plot(t_recon, x_recon, 'b--', label='reconstructed')
 plt.xlabel(r'$t$', fontsize=16)
 plt.ylabel(r'$x$', fontsize=16)
