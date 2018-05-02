@@ -12,9 +12,9 @@ def c_ks(alphas, rho):
         approximate maximum of real part of exponents
 
     """
-    m = alphas.max()
+    m = alphas.min()
     
-    return m + np.log(np.sum(np.exp(rho*(alphas - m))))/rho
+    return -m + np.log(np.sum(np.exp(-rho*(alphas - m))))/rho
 
 def DcDalpha(alphas, rho):
     """
@@ -33,10 +33,10 @@ def DcDalpha(alphas, rho):
         array of derivatives
 
     """
-    m = alphas.max()
-    a = np.sum(np.exp(rho*(alphas - m)))
+    m = -alphas.min()
+    a = np.sum(np.exp(rho*(-alphas - m)))
 
-    return np.exp(rho*(alphas - m))/a
+    return -np.exp(rho*(-alphas - m))/a
 
 def DalphaDlam(lam, dt):
     """

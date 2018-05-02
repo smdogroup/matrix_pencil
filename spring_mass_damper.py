@@ -12,7 +12,7 @@ k = 7000.0  # N/m
 
 wn = np.sqrt(k/m)
 print "exact frequency: ", np.sqrt(k/m)
-print "exact damping:   ", -0.5*c/m
+print "exact damping:   ", 0.5*c/m
 
 A = np.array([[0, 1], [-k / m, -c / m]])
 

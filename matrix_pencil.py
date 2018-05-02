@@ -47,7 +47,6 @@ class MatrixPencil(object):
             self.X = self.H.dot(x)
             self.N = self.X.shape[0]
             self.dt = T[1] - T[0]
-            print la.norm(self.X)
 
         # Set the pencil parameter L
         self.n = self.X.shape[0]
@@ -141,7 +140,7 @@ class MatrixPencil(object):
 
         # Compute damping and freqency
         s = np.log(self.lam[:self.M])/self.dt
-        self.damp = s.real
+        self.damp = -s.real
         self.freq = s.imag
 
         return
@@ -196,9 +195,9 @@ class MatrixPencil(object):
             approximate maximum of real part of exponents
 
         """
-        m = self.damp.max()
+        m = -self.damp.min()
         
-        return m + np.log(np.sum(np.exp(self.rho*(self.damp - m))))/self.rho
+        return -(m + np.log(np.sum(np.exp(self.rho*(-self.damp - m))))/self.rho)
 
     def AggregateDampingDer(self):
         """
@@ -260,6 +259,6 @@ class MatrixPencil(object):
             w = self.freq[i]
             p = self.faze[i]
 
-            X += a*np.exp(x*t)*np.cos(w*t + p)
+            X += a*np.exp(-x*t)*np.cos(w*t + p)
 
         return X
