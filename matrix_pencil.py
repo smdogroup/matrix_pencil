@@ -34,8 +34,14 @@ class MatrixPencil(object):
         if self.output_level == 1:
             print "Intializing matrix pencil method..."
 
-        # Downsample the data and save the linear interpolation matrix
+        # If the samples are complex, separate the imaginary parts
+        self.is_complex = False
+        if x.dtype == np.complex128 or x.dtype == complex:
+            self.is_complex = True
+            self.x_imag = x.imag
+            x = x.real
 
+        # Downsample the data and save the linear interpolation matrix
         if N == -1:
             self.X = x
             self.N = self.X.shape[0]
@@ -196,8 +202,13 @@ class MatrixPencil(object):
 
         """
         m = -self.damp.min()
+        c = -(m + np.log(np.sum(np.exp(self.rho*(-self.damp - m))))/self.rho)
         
-        return -(m + np.log(np.sum(np.exp(self.rho*(-self.damp - m))))/self.rho)
+        if self.is_complex:
+            dcdx = self.AggregateDampingDer()
+            return c + 1j*dcdx.dot(self.x_imag)
+        else:
+            return c
 
     def AggregateDampingDer(self):
         """

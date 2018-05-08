@@ -27,12 +27,14 @@ plt.plot(ts, alphas, ts, hs)
 # Decompose plunge signal using matrix pencil method
 print "For plunge:"
 print
-after_forcing_period = ts > 0.0
+offset = 5.0
+after_forcing_period = ts > offset
 ts = ts[after_forcing_period]
 hs = hs[after_forcing_period]
-N = 150
+N = 100
 
-pencil = MatrixPencil(ts, hs, N, True)
+output_levels = 1
+pencil = MatrixPencil(ts, hs, N, output_levels)
 pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
 
@@ -45,7 +47,7 @@ t_recon = np.linspace(ts[0], ts[-1], 1000)
 x_recon = pencil.ReconstructSignal(t_recon)
 plt.figure(figsize=(8, 6))
 plt.plot(ts, hs, label='original')
-plt.plot(t_recon, x_recon, 'b--', label='reconstructed')
+plt.plot(offset + t_recon, x_recon, 'b--', label='reconstructed')
 plt.xlabel(r'$t$', fontsize=16)
 plt.ylabel(r'$x$', fontsize=16)
 plt.legend()
@@ -53,14 +55,18 @@ plt.legend()
 # Decompose pitch signal using matrix pencil method
 print "For pitch:"
 print
+pert_ind = 43
 alphas = alphas[after_forcing_period]
+alphas_comp = alphas.astype(np.complex)
+alphas_comp[pert_ind] += 1j*1e-30
 
-pencil = MatrixPencil(ts, alphas, N, output_level=1)
+pencil = MatrixPencil(ts, alphas_comp, N, output_levels)
 pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
+c = pencil.AggregateDamping()
 
 print "damping for largest mode = ", pencil.damp[np.argmax(pencil.amps)]
-print "ks = ", pencil.AggregateDamping()
+print "ks = ", c
 
 h = 1.0e-8
 alphapert = np.random.random(alphas.shape)
@@ -81,7 +87,14 @@ approx = 0.5*(cpos - cneg)/h
 cder = pencil.AggregateDampingDer()
 analytic = np.sum(cder*alphapert)
 
+# Test complex work-around
+print "Testing complex step workaround..."
+print c.imag/1e-30
+print cder[pert_ind]
+print
+
 # Compute relative error
+print "Verifying derivative via FD..."
 rel_error = (analytic - approx)/approx
 print "Approximation: ", approx
 print "Analytic:      ", analytic
@@ -92,7 +105,7 @@ t_recon = np.linspace(ts[0], ts[-1], 1000)
 x_recon = pencil.ReconstructSignal(t_recon)
 plt.figure(figsize=(8, 6))
 plt.plot(ts, alphas, label='original')
-plt.plot(t_recon, x_recon, 'b--', label='reconstructed')
+plt.plot(offset + t_recon, x_recon, 'b--', label='reconstructed')
 plt.xlabel(r'$t$', fontsize=16)
 plt.ylabel(r'$x$', fontsize=16)
 plt.legend()
