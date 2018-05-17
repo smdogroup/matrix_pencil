@@ -162,10 +162,10 @@ class MatrixPencil(object):
         robustness
 
         """
-        tol = 1.0e-6
+        tol = 1.0e-4
         n_above_tol = len(self.s[self.s > tol])
 
-        w = [-1.0, 1.0]
+        w = [1.0, -1.0]
         diff = sig.convolve(self.s, w, 'valid')
         diffdiff = sig.convolve(diff, w, 'valid')
 

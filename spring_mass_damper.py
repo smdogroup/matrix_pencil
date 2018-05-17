@@ -7,8 +7,8 @@ from matrix_pencil import *
 
 # Spring-mass-damper system
 m = 100.0  # kg
-c = -200.0  # N*s/m
-k = 7000.0  # N/m
+c = 700.0  # N*s/m
+k = 20000.0  # N/m
 
 wn = np.sqrt(k/m)
 print "exact frequency: ", np.sqrt(k/m)
@@ -43,8 +43,10 @@ pencil = MatrixPencil(t, y[0,:], N, output_level)
 pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
 
+print "damping of all modes = ", pencil.damp
 print "damping for largest mode = ", pencil.damp[np.argmax(pencil.amps)]
-print "ks = ", pencil.AggregateDamping()
+c = pencil.AggregateDamping()
+print "ks = ", c
 
 # Plot response
 t_recon = np.linspace(t[0], t[-1], 1000)
