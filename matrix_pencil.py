@@ -162,17 +162,18 @@ class MatrixPencil(object):
         robustness
 
         """
-        tol = 1.0e-4
-        n_above_tol = len(self.s[self.s > tol])
+        tol = 1.0e-1
+        snorm = self.s/self.s.max()
+        n_above_tol = len(self.s[snorm > tol])
 
         w = [1.0, -1.0]
-        diff = sig.convolve(self.s, w, 'valid')
+        diff = sig.convolve(snorm, w, 'valid')
         diffdiff = sig.convolve(diff, w, 'valid')
 
         tol = 1.0e-3
         n_bottom_out = 2 + len(diffdiff[diffdiff > tol])
 
-        self.M = min(min(n_above_tol, n_bottom_out), self.L)
+        self.M = min(max(2, min(n_above_tol, n_bottom_out)), self.L)
 
         if self.output_level[-1] == "1":
             print "Model order, M = ", self.M
@@ -201,6 +202,9 @@ class MatrixPencil(object):
             approximate maximum of real part of exponents
 
         """
+        print "M = ", self.M
+        print "damping modes are:"
+        print self.damp
         m = -self.damp.min()
         c = -(m + np.log(np.sum(np.exp(self.rho*(-self.damp - m))))/self.rho)
         
