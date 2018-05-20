@@ -235,7 +235,7 @@ def TestChain():
 
     # Create random Y matrix and obtain damping
     t = np.linspace(0.0, 4.0, N)
-    X = np.exp(-t)*np.sin(2.0*np.pi*t) + np.sin(2.0*np.pi*t)
+    X = 10.0*np.exp(-t)*np.sin(2.0*np.pi*t) + 0.5*np.exp(t)*np.sin(8.0*np.pi*t)
     Y = np.empty((N-L, L+1), dtype=X.dtype)
     for i in range(N-L):
         for j in range(L+1):
@@ -307,10 +307,12 @@ def TestChain():
 
 def TestFullMatrixPencilDer():
     t = np.linspace(0.0, 10.0, 201)
-    X = np.exp(-t)*np.sin(2.0*np.pi*t) + np.exp(0.5*t)*np.sin(2.0*np.pi*t)
-    dt = t[1] - t[0]
+    X = 10.0*np.exp(-t)*np.sin(2.0*np.pi*t) + 0.5*np.exp(t)*np.sin(8.0*np.pi*t)
 
-    pencil = MatrixPencil(X, dt, True)
+    
+    N = 150
+    output_levels = 1
+    pencil = MatrixPencil(t, X, N)
     pencil.ComputeDampingAndFrequency()
     pencil.ComputeAmplitudeAndPhase()
     Xre = pencil.ReconstructSignal(t)
@@ -322,18 +324,18 @@ def TestFullMatrixPencilDer():
     cder = pencil.AggregateDampingDer()
     
     # Perturb the intial data
-    h = 1.0e-8
+    h = 1.0e-6
     Xpert = np.random.random(X.shape)
     #Xpert = np.ones(X.shape)
     Xpos = X + h*Xpert
     Xneg = X - h*Xpert
 
     # Approximate the derivative using finite differences
-    pencilpos = MatrixPencil(Xpos, dt)
+    pencilpos = MatrixPencil(t, Xpos, N)
     pencilpos.ComputeDampingAndFrequency()
     cpos = pencilpos.AggregateDamping()
 
-    pencilneg = MatrixPencil(Xneg, dt)
+    pencilneg = MatrixPencil(t, Xneg, N)
     pencilneg.ComputeDampingAndFrequency()
     cneg = pencilneg.AggregateDamping()
 
@@ -375,13 +377,13 @@ if __name__ == "__main__":
     #print "-----------------------------------"
     #TestPseudoinverseDer()
     #print
-    print "========================"
-    print "Chained derivative tests"
-    print "========================"
-    print
-    print "Testing dc/dY"
-    print "-------------"
-    TestChain()
+    #print "========================"
+    #print "Chained derivative tests"
+    #print "========================"
+    #print
+    #print "Testing dc/dY"
+    #print "-------------"
+    #TestChain()
     print
     print "Testing dc/dX"
     print "-------------"

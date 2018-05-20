@@ -106,6 +106,7 @@ class MatrixPencil(object):
             # Evaluate first and last basis functions
             j0 = np.sum(T[i] >= t[:-1]) - 1
             j1 = n - np.sum(T[i] <= t[1:])
+
             dt = t[j1] - t[j0]
             
             H[i,j0] += (t[j1] - T[i])/dt
@@ -162,7 +163,7 @@ class MatrixPencil(object):
         robustness
 
         """
-        tol = 1.0e-1
+        tol = 1.0e-2
         snorm = self.s/self.s.max()
         n_above_tol = len(self.s[snorm > tol])
 

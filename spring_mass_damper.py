@@ -6,22 +6,20 @@ from scipy import integrate
 from matrix_pencil import *
 
 # Spring-mass-damper system
-m = 100.0  # kg
-c = 700.0  # N*s/m
-k = 20000.0  # N/m
+zeta = -0.125
+wn = 16.0
 
-wn = np.sqrt(k/m)
-print "exact frequency: ", np.sqrt(k/m)
-print "exact damping:   ", 0.5*c/m
+print "exact frequency: ", wn
+print "exact damping:   ", zeta*wn
 
-A = np.array([[0, 1], [-k / m, -c / m]])
+A = np.array([[0.0, 1.0], [-wn**2, -2.0*zeta*wn]])
 
 def ydot(t, y):
     return A.dot(y)
 
 # Integrate to get obtain response
 t0 = 0.0
-t_bound = 3.0
+t_bound = 1.5
 y0 = np.array([1.0, 0.0])
 max_step = 0.001
 rtol = 1.0e-8
@@ -38,8 +36,9 @@ while t_step < t_bound:
 
 # Decompose signal using matrix pencil method
 N = 250
-output_level = 3
-pencil = MatrixPencil(t, y[0,:], N, output_level)
+output_level = 1
+rho = 1e6
+pencil = MatrixPencil(t, y[0,:], N, output_level, rho)
 pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
 
@@ -51,10 +50,22 @@ print "ks = ", c
 # Plot response
 t_recon = np.linspace(t[0], t[-1], 1000)
 x_recon = pencil.ReconstructSignal(t_recon)
-plt.figure(figsize=(8, 6))
-plt.plot(t, y[0,:], 'orange', label='original')
-plt.plot(t_recon, x_recon, 'b--', label='reconstructed')
-plt.xlabel(r'$t$', fontsize=16)
-plt.ylabel(r'$x$', fontsize=16)
-plt.legend()
-plt.show()
+fig = plt.figure(figsize=(10, 8))
+plt.plot(t, y[0,:], 'orange', lw=3, label='data')
+plt.plot(t_recon, x_recon, 'b--', lw=3, label='reconstruction')
+plt.xlabel(r'$t$', fontsize=30)
+plt.ylabel(r'$x$', fontsize=30)
+plt.legend(fontsize=20)
+#plt.show()
+
+# Output original and fit for plotting purposes
+tx = np.empty((len(t), 2))
+tx[:,0] = t
+tx[:,1] = y[0,:]
+np.savetxt('tx.dat', tx)
+
+TX = np.empty((len(t_recon), 2))
+TX[:,0] = t_recon
+TX[:,1] = x_recon
+np.savetxt('txrecon.dat', TX)
+
