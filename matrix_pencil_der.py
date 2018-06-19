@@ -33,10 +33,10 @@ def DcDalpha(alphas, rho):
         array of derivatives
 
     """
-    m = -alphas.min()
-    a = np.sum(np.exp(rho*(-alphas - m)))
+    m = alphas.max()
+    a = np.sum(np.exp(rho*(alphas - m)))
 
-    return -np.exp(rho*(-alphas - m))/a
+    return np.exp(rho*(alphas - m))/a
 
 def DalphaDlam(lam, dt):
     """

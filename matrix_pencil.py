@@ -147,7 +147,7 @@ class MatrixPencil(object):
 
         # Compute damping and freqency
         s = np.log(self.lam[:self.M])/self.dt
-        self.damp = -s.real
+        self.damp = s.real
         self.freq = s.imag
 
         return
@@ -205,15 +205,15 @@ class MatrixPencil(object):
         """
         print "M = ", self.M
         print "damping modes are:"
-        print self.damp
-        m = -self.damp.min()
-        c = -(m + np.log(np.sum(np.exp(self.rho*(-self.damp - m))))/self.rho)
+        print -self.damp
+        m = self.damp.max()
+        c = m + np.log(np.sum(np.exp(self.rho*(self.damp - m))))/self.rho
         
         if self.is_complex:
             dcdx = self.AggregateDampingDer()
-            return c + 1j*dcdx.dot(self.x_imag)
+            return -c - 1j*dcdx.dot(self.x_imag)
         else:
-            return c
+            return -c
 
     def AggregateDampingDer(self):
         """
@@ -231,7 +231,7 @@ class MatrixPencil(object):
         dcdX = dYdXTrans(dcdY)
         dcdx = self.H.T.dot(dcdX)
 
-        return dcdx
+        return -dcdx
 
     def ComputeAmplitudeAndPhase(self):
         """
@@ -275,6 +275,6 @@ class MatrixPencil(object):
             w = self.freq[i]
             p = self.faze[i]
 
-            X += a*np.exp(-x*t)*np.cos(w*t + p)
+            X += a*np.exp(x*t)*np.cos(w*t + p)
 
         return X
