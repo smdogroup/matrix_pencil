@@ -30,6 +30,7 @@ class MatrixPencil(object):
         """
         self.output_level = "{0:02b}".format(output_level)
         self.rho = rho
+        self.t0 = t[0]
 
         if self.output_level == 1:
             print "Intializing matrix pencil method..."
@@ -275,6 +276,6 @@ class MatrixPencil(object):
             w = self.freq[i]
             p = self.faze[i]
 
-            X += a*np.exp(x*t)*np.cos(w*t + p)
+            X += a*np.exp(x*(t - self.t0))*np.cos(w*(t - self.t0) + p)
 
         return X
