@@ -48,6 +48,17 @@ class MatrixPencil(object):
             self.N = self.X.shape[0]
             self.dt = t[1] - t[0]
             self.H = np.eye(self.N)
+
+            # check that the step size is uniform
+            flag = 0
+            tol = 1e-6
+            for i in xrange(t.size-1):
+                if abs(self.dt - (t[i+1] - t[i])) > tol:
+                    flag = 1
+            if flag > 0:
+                print "Warning: Matrix pencil time step size is not uniform"
+                print "         Please provide data with a uniform step size or use the downsampling option"
+
         else:
             T = np.linspace(t[0], t[-1], N)
             self.H = self.GenerateLinearInterpMat(T, t, x)
