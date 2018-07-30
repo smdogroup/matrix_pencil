@@ -175,30 +175,59 @@ class MatrixPencil(object):
         robustness
 
         """
-        tol = 1.0e-2
+        # Normalize the singular values by the maximum and cut out modes
+        # corresponding to singular values below a specified tolerance
+        tol1 = 1.0e-2
         snorm = self.s/self.s.max()
-        n_above_tol = len(self.s[snorm > tol])
+        n_above_tol = len(self.s[snorm > tol1])
 
+        # Approximate second derivative singular values using convolve as a
+        # central difference operator
         w = [1.0, -1.0]
         diff = sig.convolve(snorm, w, 'valid')
         diffdiff = sig.convolve(diff, w, 'valid')
 
-        tol = 1.0e-3
-        n_bottom_out = 2 + len(diffdiff[diffdiff > tol])
+        # Cut out more modes depending on the approximated second derivative 
+        # The idea is sort of to cut at an inflection point in the singular
+        # value curve or maybe where they start to bottom out
+        tol2 = 1.0e-3
+        n_bottom_out = 2 + len(diffdiff[diffdiff > tol2])
 
+        # Estimate the number of modes (model order) to have at least two but
+        # otherwise informed by the cuts made above
         self.M = min(max(2, min(n_above_tol, n_bottom_out)), self.L)
 
+        # Report the model order
         if self.output_level[-1] == "1":
             print "Model order, M = ", self.M
         
+        # Plotting to help diagnose what the cuts are doing
         if self.output_level[-2] == "1":
-            plt.figure(figsize=(8, 6))
-            plt.scatter(self.M-1, self.s[self.M-1], s=30, c='r')
-            plt.semilogy(np.arange(len(self.s)), self.s)
-            plt.title('Singular values', fontsize=16)
+            # Plot normalized singular values and first cut-off
+            plt.figure(figsize=(8, 10))
+            ax = plt.gca()
+            ax.scatter(np.arange(len(self.s)), snorm, s=40, c='blue', alpha=0.3)
+            ax.plot(np.array([-0.2*len(self.s), 1.2*len(self.s)]), 
+                    tol1*np.ones(2), 
+                    color='orange', linestyle='dashed', linewidth=2,
+                    label='cut-off')
+            ax.set_yscale('log')
+            ax.set_ylim(1e-20, 1e1)
+            plt.legend()
+            plt.title('Normalized Singular Values', fontsize=16)
 
-            plt.figure(figsize=(8, 6))
-            plt.plot(np.arange(len(diffdiff)), diffdiff)
+            # Plot approximate second derivative and second cut-off
+            plt.figure(figsize=(8, 10))
+            ax = plt.gca()
+            ax.scatter(np.arange(len(diffdiff)), diffdiff, 
+                       s=40, c='blue', alpha=0.3)
+            ax.plot(np.array([-0.2*len(self.s), 1.2*len(self.s)]), 
+                    tol2*np.ones(2), 
+                    color='orange', linestyle='dashed', linewidth=2,
+                    label='2nd cut-off')
+            ax.set_yscale('log')
+            ax.set_ylim(1e-20, 1e1)
+            plt.legend()
             plt.title('Approx. 2nd Derivative of Singular Values', fontsize=16)
             plt.show()
 

@@ -27,11 +27,11 @@ plt.plot(ts, alphas, ts, hs)
 # Decompose plunge signal using matrix pencil method
 print "For plunge:"
 print
-offset = 5.0
+offset = 0.5
 after_forcing_period = ts > offset
 ts = ts[after_forcing_period]
 hs = hs[after_forcing_period]
-N = 100
+N = 252
 
 output_levels = 1
 pencil = MatrixPencil(ts, hs, N, output_levels)

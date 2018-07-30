@@ -410,8 +410,10 @@ def dVhatdYTrans(dcdVhat, U, s, VT):
 
     dVhat = np.zeros((M,n,m,n))
 
+    tol = 1e-8
+
     # If Y is full-rank, then use the standard SVD derivative
-    if (all(s[M:] > 1e-6)):
+    if (all(s[M:] > tol)):
         print "Computing exact SVD derivative..."
         _, _, dVT = SVDDerivative(U, s, VT)
         dVhat = dVT[:M,:,:,:]
@@ -419,7 +421,7 @@ def dVhatdYTrans(dcdVhat, U, s, VT):
     # If Y is numerically low-rank, then approximate the derivative
     else:
         print "Computing approximate SVD derivative..."
-        ns = max(M, len(s[s > 1e-6]))
+        ns = max(M, len(s[s > tol]))
 
         # Square matrix of singular values
         S1 = np.diag(s[:ns])
