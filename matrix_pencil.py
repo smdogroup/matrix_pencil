@@ -200,6 +200,7 @@ class MatrixPencil(object):
         # Report the model order
         if self.output_level[-1] == "1":
             print "Model order, M = ", self.M
+            np.savetxt('singular_values.dat',snorm)
         
         # Plotting to help diagnose what the cuts are doing
         if self.output_level[-2] == "1":
@@ -246,15 +247,15 @@ class MatrixPencil(object):
         """
         print "M = ", self.M
         print "damping modes are:"
-        print -self.damp
+        print  self.damp
         m = self.damp.max()
         c = m + np.log(np.sum(np.exp(self.rho*(self.damp - m))))/self.rho
         
         if self.is_complex:
             dcdx = self.AggregateDampingDer()
-            return -c - 1j*dcdx.dot(self.x_imag)
+            return  c + 1j*dcdx.dot(self.x_imag)
         else:
-            return -c
+            return  c
 
     def AggregateDampingDer(self):
         """
@@ -272,7 +273,7 @@ class MatrixPencil(object):
         dcdX = dYdXTrans(dcdY)
         dcdx = self.H.T.dot(dcdX)
 
-        return -dcdx
+        return  dcdx
 
     def ComputeAmplitudeAndPhase(self):
         """
