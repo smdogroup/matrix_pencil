@@ -162,6 +162,12 @@ class MatrixPencil(object):
         self.damp = s.real
         self.freq = s.imag
 
+        # force the damping of zero frequency mode to something that
+        # won't affect the KS aggregation
+        for i in range(self.damp.size):
+            if abs(self.freq[i]) < 1e-7:
+                self.damp[i] = -99999.0
+
         return
 
     def EstimateModelOrder(self):
@@ -247,7 +253,8 @@ class MatrixPencil(object):
         """
         print "M = ", self.M
         print "damping modes are:"
-        print  self.damp
+        for i in range(self.damp.size):
+            print  'freq:', self.freq[i], 'damp:', self.damp[i]
         m = self.damp.max()
         c = m + np.log(np.sum(np.exp(self.rho*(self.damp - m))))/self.rho
         
@@ -264,6 +271,11 @@ class MatrixPencil(object):
 
         """
         dcda = DcDalpha(self.damp, self.rho)
+
+        # zero out the contribution from the zero frequency mode if present
+        for i in range(self.freq.size):
+            if abs(self.freq[i]) < 1e-7:
+                dcda[i] = 0.0
         dcdl = DalphaDlamTrans(dcda, self.lam, self.dt)
         dcdA = DlamDATrans(dcdl, self.W, self.V)
         dcdV1T = dAdV1Trans(dcdA, self.V1T, self.V1inv, self.V2T)
