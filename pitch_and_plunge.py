@@ -1,6 +1,7 @@
 """
 Test matrix pencil technique on signals coming from 2D aeroelastic model
 """
+from __future__ import print_function
 import numpy as np
 from matrix_pencil import *
 
@@ -25,8 +26,7 @@ plt.figure()
 plt.plot(ts, alphas, ts, hs)
 
 # Decompose plunge signal using matrix pencil method
-print "For plunge:"
-print
+print("For plunge:\n")
 offset = 0.5
 after_forcing_period = ts > offset
 ts = ts[after_forcing_period]
@@ -38,9 +38,9 @@ pencil = MatrixPencil(ts, hs, N, output_levels)
 pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
 
-print "damping for largest mode = ", pencil.damp[np.argmax(pencil.amps)]
-print "ks = ", pencil.AggregateDamping()
-print
+print("damping for largest mode = ", pencil.damp[np.argmax(pencil.amps)])
+print("ks = ", pencil.AggregateDamping())
+print("")
 
 # Plot plunge response
 t_recon = np.linspace(ts[0], ts[-1], 1000)
@@ -53,8 +53,7 @@ plt.ylabel(r'$x$', fontsize=16)
 plt.legend()
 
 # Decompose pitch signal using matrix pencil method
-print "For pitch:"
-print
+print("For pitch:\n")
 pert_ind = 43
 alphas = alphas[after_forcing_period]
 alphas_comp = alphas.astype(np.complex)
@@ -65,8 +64,8 @@ pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
 c = pencil.AggregateDamping()
 
-print "damping for largest mode = ", pencil.damp[np.argmax(pencil.amps)]
-print "ks = ", c
+print("damping for largest mode = ", pencil.damp[np.argmax(pencil.amps)])
+print("ks = ", c)
 
 h = 1.0e-8
 alphapert = np.random.random(alphas.shape)
@@ -88,17 +87,16 @@ cder = pencil.AggregateDampingDer()
 analytic = np.sum(cder*alphapert)
 
 # Test complex work-around
-print "Testing complex step workaround..."
-print c.imag/1e-30
-print cder[pert_ind]
-print
+print("Testing complex step workaround...")
+print(c.imag/1e-30)
+print(cder[pert_ind])
 
 # Compute relative error
-print "Verifying derivative via FD..."
+print("Verifying derivative via FD...")
 rel_error = (analytic - approx)/approx
-print "Approximation: ", approx
-print "Analytic:      ", analytic
-print "Rel. error:    ", rel_error
+print("Approximation: ", approx)
+print("Analytic:      ", analytic)
+print("Rel. error:    ", rel_error)
 
 # Plot plunge response
 t_recon = np.linspace(ts[0], ts[-1], 1000)

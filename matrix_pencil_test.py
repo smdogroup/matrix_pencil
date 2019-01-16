@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 import numpy as np
 from scipy import linalg as la
 from matrix_pencil import *
@@ -22,15 +23,15 @@ def TestDcDalpha():
     # Obtain derivative by complex step approximation 
     rho = 100.0
     approx = c_ks(alphas, rho).imag/h
-    print "Approximation: ", approx
+    print("Approximation: ", approx)
 
     # Obtain derivative analytically
     analytic = pert.dot(DcDalpha(alphas.real, rho))
-    print "Analytic:      ", analytic
+    print("Analytic:      ", analytic)
 
     # Compute relative error
     rel_error = (analytic - approx)/approx
-    print "Rel. error:    ", rel_error
+    print("Rel. error:    ", rel_error)
 
     return
 
@@ -63,17 +64,17 @@ def TestDalphaDlam():
     approx_imag = 0.5*(f(lam_pos_imag) - f(lam_neg_imag))/h
 
     approx = approx_real + 1j*approx_imag
-    print "Approximation: ", approx
+    print("Approximation: ", approx)
 
     # Obtain derivatives analytically
     analytic = DalphaDlam(lam, dt)
-    print "Analytic:      ", analytic
+    print("Analytic:      ", analytic)
 
     # Compute relative error
     rel_error_real = (analytic.real - approx.real)/approx.real
     rel_error_imag = (analytic.imag - approx.imag)/approx.imag
-    print "Rel. error r:  ", rel_error_real
-    print "Rel. error i:  ", rel_error_imag
+    print("Rel. error r:  ", rel_error_real)
+    print("Rel. error i:  ", rel_error_imag)
 
     return
 
@@ -97,20 +98,20 @@ def TestDlamDA():
 
     # Compute finite difference approximation to derivative
     approx = 0.5*(lam_pos - lam_neg)/h
-    print "Approximation: ", approx
+    print("Approximation: ", approx)
 
     # Obtain derivatives analytically
     dlam = DlamDA(A)
     analytic = np.zeros(lam.shape, dtype=np.complex)
     for i in range(len(lam)):
         analytic[i] = np.sum(dlam[i,:,:]*pert)
-    print "Analytic:      ", analytic
+    print("Analytic:      ", analytic)
 
     # Compute relative error
     rel_error_real = (analytic.real - approx.real)/approx.real
     rel_error_imag = (analytic.imag - approx.imag)/approx.imag
-    print "Rel. error r:  ", rel_error_real
-    print "Rel. error i:  ", rel_error_imag
+    print("Rel. error r:  ", rel_error_real)
+    print("Rel. error i:  ", rel_error_imag)
 
     return
 
@@ -152,28 +153,25 @@ def TestSVDDerivative():
 
     # Compute relative error
     U_rel_error = (Uanalytic - Uapprox)/Uapprox
-    print "Approx., U:    " 
-    print Uapprox
-    print "Analytic, U:   " 
-    print Uanalytic
-    print "Rel. error, U: " 
-    print U_rel_error
-    print
+    print("Approx., U:    ")
+    print(Uapprox)
+    print("Analytic, U:   ") 
+    print(Uanalytic)
+    print("Rel. error, U: ") 
+    print(U_rel_error)
 
     s_rel_error = (sanalytic - sapprox)/sapprox
-    print "Approx., s:    ", sapprox
-    print "Analytic, s:   ", sanalytic
-    print "Rel. error, s: ", s_rel_error
-    print
+    print("Approx., s:    ", sapprox)
+    print("Analytic, s:   ", sanalytic)
+    print("Rel. error, s: ", s_rel_error)
 
     VT_rel_error = (VTanalytic - VTapprox)/VTapprox
-    print "Approx., VT  : " 
-    print VTapprox
-    print "Analytic, VT:  " 
-    print VTanalytic
-    print "Rel. error, VT:" 
-    print VT_rel_error
-    print
+    print("Approx., VT  : ")
+    print(VTapprox)
+    print("Analytic, VT:  ")
+    print(VTanalytic)
+    print("Rel. error, VT:")
+    print(VT_rel_error)
 
     return
 
@@ -203,21 +201,21 @@ def TestPseudoinverseDer():
     Aneginv = la.pinv(Aneg)
 
     approx = 0.5*(Aposinv - Aneginv)/h
-    print "Approx., Ainv: " 
-    print approx
+    print("Approx., Ainv: ")
+    print(approx)
 
     # Obtain analytic derivative
     analytic = np.zeros(Ainv.shape)
     for i in range(n):
         for j in range(m):
             analytic[i,j] = np.sum(dAinv[i,j,:,:]*Apert)
-    print "Analytic, Ainv:" 
-    print analytic
+    print("Analytic, Ainv:")
+    print(analytic)
 
     # Compute relative error
     rel_error = (analytic - approx)/approx
-    print "Error, Ainv:   " 
-    print rel_error
+    print("Error, Ainv:   ") 
+    print(rel_error)
 
     return
     
@@ -227,7 +225,7 @@ def TestChain():
 
     """
     N = 50
-    L = N/2 - 1
+    L = N//2 - 1
     M = 4
     h = 1.0e-8
     dt = 0.1
@@ -299,9 +297,9 @@ def TestChain():
 
     # Compute relative error
     rel_error = (analytic - approx)/approx
-    print "Approximation: ", approx
-    print "Analytic:      ", analytic
-    print "Rel. error:    ", rel_error
+    print("Approximation: ", approx)
+    print("Analytic:      ", analytic)
+    print("Rel. error:    ", rel_error)
 
     return
 
@@ -340,51 +338,51 @@ def TestFullMatrixPencilDer():
     cneg = pencilneg.AggregateDamping()
 
     approx = 0.5*(cpos - cneg)/h
-    print "Approximation: ", approx
+    print("Approximation: ", approx)
 
     # Compute analytic derivative
     analytic = np.sum(cder*Xpert)
-    print "Analytic:      ", analytic
+    print("Analytic:      ", analytic)
 
     # Compute relative error
     rel_error = (analytic - approx)/approx
-    print "Rel. error:    ", rel_error
+    print("Rel. error:    ", rel_error)
 
     return
 
 if __name__ == "__main__":
-    #print "======================"
-    #print "Basic derivative tests"
-    #print "======================"
-    #print
-    #print "Testing derivative of KS function"
-    #print "---------------------------------"
-    #TestDcDalpha()
-    #print
-    #print "Testing derivative of exponent extraction"
-    #print "-----------------------------------------"
-    #TestDalphaDlam()
-    #print
-    #print "Testing derivative of eigenvalue problem"
-    #print "----------------------------------------"
-    #TestDlamDA()
-    #print
-    #print "Testing derivative of SVD"
-    #print "-------------------------"
-    #TestSVDDerivative()
-    #print
-    #print "Testing derivative of Pseudoinverse"
-    #print "-----------------------------------"
-    #TestPseudoinverseDer()
-    #print
-    #print "========================"
-    #print "Chained derivative tests"
-    #print "========================"
-    #print
-    #print "Testing dc/dY"
-    #print "-------------"
-    #TestChain()
-    print
-    print "Testing dc/dX"
-    print "-------------"
+    print("======================")
+    print("Basic derivative tests")
+    print("======================")
+    print("")
+    print("Testing derivative of KS function")
+    print("---------------------------------")
+    TestDcDalpha()
+    print("")
+    print("Testing derivative of exponent extraction")
+    print("-----------------------------------------")
+    TestDalphaDlam()
+    print("")
+    print("Testing derivative of eigenvalue problem")
+    print("----------------------------------------")
+    TestDlamDA()
+    print("")
+    print("Testing derivative of SVD")
+    print("-------------------------")
+    TestSVDDerivative()
+    print("")
+    print("Testing derivative of Pseudoinverse")
+    print("-----------------------------------")
+    TestPseudoinverseDer()
+    print("")
+    print("========================")
+    print("Chained derivative tests")
+    print("========================")
+    print("")
+    print("Testing dc/dY")
+    print("-------------")
+    TestChain()
+    print("")
+    print("Testing dc/dX")
+    print("-------------")
     TestFullMatrixPencilDer()

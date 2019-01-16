@@ -1,6 +1,7 @@
 """
 Test matrix pencil technique on simple spring-mass-damper system
 """
+from __future__ import print_function
 import numpy as np
 from scipy import integrate
 from matrix_pencil import *
@@ -42,10 +43,10 @@ pencil = MatrixPencil(t, y[0,:], N, output_level, rho)
 pencil.ComputeDampingAndFrequency()
 pencil.ComputeAmplitudeAndPhase()
 
-print "damping of all modes = ", pencil.damp
-print "damping for largest mode = ", pencil.damp[np.argmax(pencil.amps)]
+print("damping of all modes = ", pencil.damp)
+print("damping for largest mode = ", pencil.damp[np.argmax(pencil.amps)])
 c = pencil.AggregateDamping()
-print "ks = ", c
+print("ks = ", c)
 
 # Plot response
 t_recon = np.linspace(t[0], t[-1], 1000)

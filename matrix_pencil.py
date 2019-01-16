@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 import numpy as np
 import scipy.linalg as la
 import scipy.signal as sig
@@ -33,7 +34,7 @@ class MatrixPencil(object):
         self.t0 = t[0]
 
         if self.output_level == 1:
-            print "Intializing matrix pencil method..."
+            print("Intializing matrix pencil method...")
 
         # If the samples are complex, separate the imaginary parts
         self.is_complex = False
@@ -56,8 +57,8 @@ class MatrixPencil(object):
                 if abs(self.dt - (t[i+1] - t[i])) > tol:
                     flag = 1
             if flag > 0:
-                print "Warning: Matrix pencil time step size is not uniform"
-                print "         Please provide data with a uniform step size or use the downsampling option"
+                print("Warning: Matrix pencil time step size is not uniform")
+                print("         Please provide data with a uniform step size or use the downsampling option")
 
         else:
             T = np.linspace(t[0], t[-1], N)
@@ -68,11 +69,11 @@ class MatrixPencil(object):
 
         # Set the pencil parameter L
         self.n = self.X.shape[0]
-        self.L = self.N/2 - 1
+        self.L = self.N//2 - 1
 
         if self.output_level[-1] == "1":
-            print "Number of samples, N = ", self.N
-            print "Pencil parameter, L = ", self.L
+            print("Number of samples, N = ", self.N)
+            print("Pencil parameter, L = ", self.L)
 
         # Save model order
         self.M = None
@@ -112,7 +113,7 @@ class MatrixPencil(object):
         H = np.zeros((N, n))
 
         if self.output_level[-1] == "1":
-            print "Downsampling from {0} to {1} points...".format(n, N)
+            print("Downsampling from {0} to {1} points...".format(n, N))
 
         for i in range(N):
             # Evaluate first and last basis functions
@@ -205,7 +206,7 @@ class MatrixPencil(object):
 
         # Report the model order
         if self.output_level[-1] == "1":
-            print "Model order, M = ", self.M
+            print("Model order, M = ", self.M)
             np.savetxt('singular_values.dat',snorm)
         
         # Plotting to help diagnose what the cuts are doing
@@ -251,10 +252,10 @@ class MatrixPencil(object):
             approximate maximum of real part of exponents
 
         """
-        print "M = ", self.M
-        print "damping modes are:"
-        for i in range(self.damp.size):
-            print  'freq:', self.freq[i], 'damp:', self.damp[i]
+        print("M = ", self.M)
+        print("damping modes are:")
+        print(-self.damp)
+
         m = self.damp.max()
         c = m + np.log(np.sum(np.exp(self.rho*(self.damp - m))))/self.rho
         

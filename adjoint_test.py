@@ -1,5 +1,6 @@
 """
 """
+from __future__ import print_function
 from mpi4py import MPI
 from tacs import TACS, elements, functions
 import numpy as np
@@ -97,8 +98,8 @@ pencil.ComputeAmplitudeAndPhase()
 c = pencil.AggregateDamping()
 cder = pencil.AggregateDampingDer()
 
-print "exact damping:     ", zeta*wn
-print "estimated damping: ", c
+print("exact damping:     ", zeta*wn)
+print("estimated damping: ", c)
 
 # Plot signal reconstructed by matrix pencil
 t_recon = np.linspace(T[0], T[-1], 500)
@@ -128,8 +129,8 @@ for step in range(num_steps, -1, -1):
 dcdx = np.array([0.0])
 bdf.getGradient(dcdx)
 
-print "exact derivative:     ", wn
-print "estimated derivative: ", dcdx[0]
+print("exact derivative:     ", wn)
+print("estimated derivative: ", dcdx[0])
 
 
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 from scipy import linalg as la
 
@@ -414,13 +415,13 @@ def dVhatdYTrans(dcdVhat, U, s, VT):
 
     # If Y is full-rank, then use the standard SVD derivative
     if (all(s[M:] > tol)):
-        print "Computing exact SVD derivative..."
+        print("Computing exact SVD derivative...")
         _, _, dVT = SVDDerivative(U, s, VT)
         dVhat = dVT[:M,:,:,:]
 
     # If Y is numerically low-rank, then approximate the derivative
     else:
-        print "Computing approximate SVD derivative..."
+        print("Computing approximate SVD derivative...")
         ns = max(M, len(s[s > tol]))
 
         # Square matrix of singular values
